@@ -6,6 +6,7 @@ import {RouterModule} from '@angular/router';
 
 import {AppComponent} from './app.component';
 import {HomeComponent} from './home/home.component';
+import {ToastrModule} from "ngx-toastr";
 
 @NgModule({
   declarations: [
@@ -16,6 +17,7 @@ import {HomeComponent} from './home/home.component';
     BrowserModule,
     HttpClientModule,
     FormsModule,
+    ToastrModule.forRoot(),
     RouterModule.forRoot([
         {path: '', component: HomeComponent, pathMatch: 'full'},
       ],

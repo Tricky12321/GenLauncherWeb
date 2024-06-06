@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text;
 using ElectronNET.API;
 using ElectronNET.API.Entities;
+using GenLauncherWeb.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -29,7 +30,7 @@ namespace GenLauncherWeb
         public void ConfigureServices(IServiceCollection services)
         {
             // Custom Services
-            // services.AddScoped<Outbound, Outbound>();
+            services.AddScoped<SteamService, SteamService>();
             services.AddElectron();
             services.AddMvc(options => options.EnableEndpointRouting = false);
 
