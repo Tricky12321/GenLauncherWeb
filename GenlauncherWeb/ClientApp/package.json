@@ -1,0 +1,62 @@
+{
+  "name": "GenLauncher_Frontend",
+  "version": "0.1.0",
+  "scripts": {
+    "ng": "ng",
+    "build.prod": "node --max_old_space_size=16384 ng build --configuration production && tar -zcvf archive.tar.gz dist/*",
+    "start": "echo something && ng serve",
+    "build": "node --max_old_space_size=16384 ./node_modules/@angular/cli/bin/ng build --configuration production",
+    "test": "ng test",
+    "lint": "ng lint",
+    "e2e": "ng e2e",
+    "build:stats": "ng build --stats-json",
+    "analyze": "webpack-bundle-analyzer dist/stats-es2015.json"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/animations": "16.2.12",
+    "@angular/cdk": "16.2.12",
+    "@angular/common": "16.2.12",
+    "@angular/compiler": "16.2.12",
+    "@angular/core": "16.2.12",
+    "@angular/elements": "16.2.12",
+    "@angular/forms": "16.2.12",
+    "@angular/localize": "16.2.12",
+    "@angular/platform-browser": "16.2.12",
+    "@angular/platform-browser-dynamic": "16.2.12",
+    "@angular/router": "16.2.12",
+    "@ng-bootstrap/ng-bootstrap": "15.1.2",
+    "@popperjs/core": "2.11.8",
+    "bootstrap": "5.2.3",
+    "chart.js": "4.4.1",
+    "jquery": "3.6.3",
+    "ngx-toastr": "17.0.2",
+    "rxjs": "7.8.1",
+    "tslib": "2.3.1",
+    "typescript": "4.9.3",
+    "zone.js": "0.13.3"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "16.2.12",
+    "@angular/cli": "16.2.12",
+    "@angular/compiler-cli": "16.2.12",
+    "@angular/language-service": "16.2.12",
+    "@types/jquery": "3.5.16",
+    "@types/node": "20.11.0",
+    "@types/jasmine": "4.3.1",
+    "@types/jasminewd2": "2.0.10",
+    "jasmine-core": "4.5.0",
+    "jasmine-spec-reporter": "7.0.0",
+    "karma": "6.4.1",
+    "karma-chrome-launcher": "3.1.1",
+    "karma-coverage-istanbul-reporter": "3.0.3",
+    "karma-jasmine": "5.1.0",
+    "karma-jasmine-html-reporter": "1.7.0",
+    "typescript": "4.9.3",
+    "webpack-bundle-analyzer": "4.7.0"
+  },
+  "optionalDependencies": {
+    "ts-node": "10.9.2",
+    "eslint": "8.56.0"
+  }
+}
