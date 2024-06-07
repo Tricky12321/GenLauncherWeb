@@ -2,6 +2,7 @@ import {Component, OnInit} from '@angular/core';
 import {GameService} from "../services/game.service";
 import {ToastrService} from "ngx-toastr";
 import {GeneralService} from "../services/general.service";
+import {Router} from "@angular/router";
 
 @Component({
   selector: 'app-root',
@@ -9,11 +10,12 @@ import {GeneralService} from "../services/general.service";
   styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit {
-  constructor(private gameService: GameService, private generalService: GeneralService, private toastrService: ToastrService) {
+  constructor(private gameService: GameService, private generalService: GeneralService, private toastrService: ToastrService, public router: Router) {
 
   }
 
   public steamPath: string;
+  public homePage: boolean = true;
 
   startGame() {
     this.gameService.startGame().subscribe(success => {
@@ -30,5 +32,18 @@ export class AppComponent implements OnInit {
       console.log("Steam path: " + result.steamInstallPath);
       this.steamPath = result.steamInstallPath;
     })
+  }
+
+  toggleModsView() {
+    if (this.homePage) {
+      this.router.navigate(['add-mod']);
+    } else {
+      this.router.navigate(['']);
+    }
+    this.homePage = !this.homePage;
+  }
+
+  getModsButtonText() {
+    return this.homePage ? 'Install mods' : 'Installed mods';
   }
 }

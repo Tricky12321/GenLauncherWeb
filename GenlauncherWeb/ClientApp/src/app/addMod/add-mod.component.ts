@@ -11,7 +11,7 @@ import {ReposModsData} from "../../models/ReposModsData";
 export class AddModComponent implements OnInit {
   dtOptions: DataTables.Settings = {
     paging: false,
-    scrollY: "400px",
+    scrollY: "600px",
   };
 
   constructor(public router: Router, public generalService: GeneralService) {
@@ -28,6 +28,12 @@ export class AddModComponent implements OnInit {
   public load() {
     this.generalService.getModList().subscribe(success => {
     this.repoModsData = success;
+    })
+  }
+
+  installMod(modId: number) {
+    this.generalService.installMod(modId).subscribe(success => {
+      this.load();
     })
   }
 }

@@ -17,4 +17,8 @@ export class GeneralService {
   getModList() {
     return this.http.get<ReposModsData>('/api/general/modlist');
   }
+
+  installMod(modId: number) {
+    return this.http.get('/api/general/installMod/' + modId);
+  }
 }

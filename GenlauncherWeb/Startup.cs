@@ -50,10 +50,7 @@ namespace GenLauncherWeb
                     options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
                 });
             // In production, the Angular files will be served from this directory
-            services.AddSpaStaticFiles(configuration =>
-            {
-                configuration.RootPath = "ClientApp/dist";
-            });
+            services.AddSpaStaticFiles(configuration => { configuration.RootPath = "ClientApp/dist"; });
             services.AddControllersWithViews();
         }
 
@@ -105,49 +102,42 @@ namespace GenLauncherWeb
                 ElectronBootstrap();
             }
         }
-        
+
         public async void ElectronBootstrap()
         {
             BrowserWindowOptions options = new BrowserWindowOptions
             {
-                Show = false
+                Show = false,
+                Width = 1200,
+                Height = 800,
+                Fullscreen = false,
             };
 
-            BrowserWindow mainWindow = await Electron.WindowManager.CreateWindowAsync("http://localhost:8002");
-            mainWindow.OnReadyToShow += () =>
-            {
-                mainWindow.Show();
-            };
+            BrowserWindow mainWindow = await Electron.WindowManager.CreateWindowAsync(options, "http://localhost:8002");
+            mainWindow.OnReadyToShow += () => { mainWindow.Show(); };
             mainWindow.SetTitle("GenLauncher");
-
             MenuItem[] menu = new MenuItem[]
             {
                 new MenuItem
                 {
                     Label = "File",
-                    Submenu=new MenuItem[]
+                    Submenu = new MenuItem[]
                     {
                         new MenuItem
                         {
-                            Label ="Exit",
-                            Click =()=>{Electron.App.Exit();}
+                            Label = "Exit",
+                            Click = () => { Electron.App.Exit(); }
                         }
                     }
                 },
                 new MenuItem
                 {
                     Label = "Info",
-                    Click = async ()=>
-                    {
-                        await Electron.Dialog.ShowMessageBoxAsync("Welcome to App");
-                    }
+                    Click = async () => { await Electron.Dialog.ShowMessageBoxAsync("Welcome to App"); }
                 }
             };
 
             Electron.Menu.SetApplicationMenu(menu);
         }
-        
     }
-    
-    
 }

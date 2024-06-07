@@ -23,6 +23,7 @@ public class ReposModsData
 
 public class ModAddonsAndPatches
 {
+    public int ModId { get; set; }
     public string ModName { get; set; }
     public string ModLink { get; set; }
     public List<string> ModPatches { get; set; }

@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Net.Http;
 using GenLauncherWeb.Enums;
 using GenLauncherWeb.Models;
@@ -12,6 +13,7 @@ public class RepoService
     protected readonly string RepoUrl;
     protected readonly GameType GameType = GetGameType();
     protected readonly SteamService SteamService;
+    protected ReposModsData _reposModsDataCache;
 
 
     public RepoService(IConfiguration configuration, SteamService steamService)
@@ -42,7 +44,19 @@ public class RepoService
 
     public ReposModsData GetRepoData()
     {
-        var deSerializer = new Deserializer();
-        return deSerializer.Deserialize<ReposModsData>(DownloadRepoYaml());
+        if (_reposModsDataCache == null)
+        {
+            var deSerializer = new Deserializer();
+
+            var idCounter = 1;
+            _reposModsDataCache = deSerializer.Deserialize<ReposModsData>(DownloadRepoYaml());
+            _reposModsDataCache.modDatas = _reposModsDataCache.modDatas.OrderBy(x => x.ModName).Select(x =>
+            {
+                x.ModId = idCounter++;
+                return x;
+            }).ToList();
+        }
+
+        return _reposModsDataCache;
     }
 }
