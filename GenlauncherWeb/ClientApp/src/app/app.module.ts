@@ -7,21 +7,27 @@ import {RouterModule} from '@angular/router';
 import {AppComponent} from './app.component';
 import {HomeComponent} from './home/home.component';
 import {ToastrModule} from "ngx-toastr";
+import {AddModComponent} from "./addMod/add-mod.component";
+import {DataTablesModule} from "angular-datatables";
 
 @NgModule({
   declarations: [
     AppComponent,
     HomeComponent,
+    AddModComponent
   ],
   imports: [
     BrowserModule,
     HttpClientModule,
     FormsModule,
     ToastrModule.forRoot(),
+    DataTablesModule,
     RouterModule.forRoot([
         {path: '', component: HomeComponent, pathMatch: 'full'},
+        {path: 'add-mod', component: AddModComponent, pathMatch: 'full'},
       ],
-    )
+    ),
+    DataTablesModule
   ],
   providers: [],
   bootstrap: [AppComponent]

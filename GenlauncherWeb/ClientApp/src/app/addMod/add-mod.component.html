@@ -1,0 +1,16 @@
+<div class="mt-3">
+  <table datatable [dtOptions]="this.dtOptions" class="table" *ngIf="this.repoModsData != null">
+    <thead>
+    <tr>
+      <th>Mod name</th>
+      <th>Action</th>
+    </tr>
+    </thead>
+    <tbody *ngIf="this.repoModsData.modDatas != null && this.repoModsData.modDatas.length > 0">
+    <tr *ngFor="let mod of this.repoModsData.modDatas">
+      <td>{{ mod.modName }}</td>
+      <td></td>
+    </tr>
+    </tbody>
+  </table>
+</div>

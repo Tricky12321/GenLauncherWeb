@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.SpaServices.AngularCli;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Newtonsoft.Json;
 
 namespace GenLauncherWeb
 {
@@ -31,9 +32,23 @@ namespace GenLauncherWeb
         {
             // Custom Services
             services.AddScoped<SteamService, SteamService>();
+            services.AddScoped<RepoService, RepoService>();
+            services.AddHostedService<StartupService>();
+
             services.AddElectron();
             services.AddMvc(options => options.EnableEndpointRouting = false);
-
+            services.AddControllers()
+                .AddNewtonsoftJson(options =>
+                {
+                    //Set datetime to local og hosting machine
+                    options.SerializerSettings.DateTimeZoneHandling = DateTimeZoneHandling.Local;
+                    //Optimize formatting
+                    options.SerializerSettings.Formatting = Formatting.None;
+                    //Ignore json self ReferenceLoopHandling
+                    options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
+                    //Don't json null values
+                    options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
+                });
             // In production, the Angular files will be served from this directory
             services.AddSpaStaticFiles(configuration =>
             {

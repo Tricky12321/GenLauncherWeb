@@ -2,12 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Configuration.UserSecrets;
 
 namespace GenLauncherWeb.Services;
 
 public class SteamService
 {
-    public string GetSteamGamePath()
+    public string GetSteamInstallPath()
     {
         string zeroHourGameId = "2732960";
         string platform = DetectPlatform();
@@ -98,5 +99,21 @@ public class SteamService
     {
         string generalInstallDir = Path.Combine(steamInstallPath, "");
         return generalInstallDir;
+    }
+    public string GetGeneralInstallDir()
+    {
+        var steamInstallPath = GetSteamInstallPath();
+        string generalInstallDir = Path.Combine(steamInstallPath, "");
+        return generalInstallDir;
+    }
+
+    public void CreateModsFolder()
+    {
+        var installDir = GetGeneralInstallDir();
+        var modsDir = Path.Combine(installDir, "mods");
+        if (!Directory.Exists(modsDir))
+        {
+            Directory.CreateDirectory(modsDir);
+        }
     }
 }
