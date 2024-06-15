@@ -18,7 +18,7 @@ export class GeneralService {
     return this.http.get<ReposModsData>('/api/general/modlist');
   }
 
-  installMod(modId: number) {
-    return this.http.get('/api/general/installMod/' + modId);
+  installMod(modName: string) {
+    return this.http.post('/api/general/installMod/', {modName: modName} );
   }
 }

@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Net.Http;
 using GenLauncherWeb.Enums;
@@ -23,13 +24,13 @@ public class RepoService
         SteamService.GetGeneralInstallDir();
     }
 
-    public static GameType GetGameType()
+    private static GameType GetGameType()
     {
         // TODO: Implement way to detect game, maybe some way to select which game to mod for
         return GameType.ZH;
     }
 
-    public string DownloadRepoYaml()
+    private string DownloadRepoYaml()
     {
         SteamService.CreateModsFolder();
         var rawRepoYaml = "";
@@ -56,7 +57,15 @@ public class RepoService
                 return x;
             }).ToList();
         }
-
         return _reposModsDataCache;
     }
+
+    public void DownloadAndInstallModByName(string name)
+    {
+        var repoData = GetRepoData();
+        var mod = repoData.modDatas.FirstOrDefault(x => String.Equals(x.ModName.Trim(), name.Trim(), StringComparison.CurrentCultureIgnoreCase));
+        
+    }
+    
+    
 }

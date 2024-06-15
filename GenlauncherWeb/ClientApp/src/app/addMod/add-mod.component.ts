@@ -32,7 +32,8 @@ export class AddModComponent implements OnInit {
   }
 
   installMod(modId: number) {
-    this.generalService.installMod(modId).subscribe(success => {
+    var mod = this.repoModsData.modDatas.find(x => x.modId == modId);
+    this.generalService.installMod(mod.modName).subscribe(success => {
       this.load();
     })
   }

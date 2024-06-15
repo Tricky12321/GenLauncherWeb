@@ -1,3 +1,4 @@
+using GenLauncherWeb.Models;
 using GenLauncherWeb.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -28,5 +29,12 @@ public class GeneralController : ControllerBase
         var steamInstallPath = _steamService.GetSteamInstallPath();
         _steamService.GetGeneralInstallDir(steamInstallPath);
         return Ok(new { SteamInstallPath = steamInstallPath });
+    }
+
+    [HttpPost("installMod")]
+    public IActionResult InstallMod([FromBody] InstallModRequest installModRequest)
+    {
+        _repoService.DownloadAndInstallModByName(installModRequest.ModName);
+        return Ok();
     }
 }
