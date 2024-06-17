@@ -19,6 +19,6 @@ export class GeneralService {
   }
 
   installMod(modName: string) {
-    return this.http.post('/api/general/installMod/', {modName: modName} );
+    return this.http.post('/api/general/installMod', {modName: modName} );
   }
 }

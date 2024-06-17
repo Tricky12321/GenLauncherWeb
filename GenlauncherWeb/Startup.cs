@@ -33,7 +33,6 @@ namespace GenLauncherWeb
             // Custom Services
             services.AddScoped<SteamService, SteamService>();
             services.AddScoped<RepoService, RepoService>();
-            services.AddHostedService<StartupService>();
 
             services.AddElectron();
             services.AddMvc(options => options.EnableEndpointRouting = false);

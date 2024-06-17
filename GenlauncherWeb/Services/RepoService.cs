@@ -47,15 +47,8 @@ public class RepoService
     {
         if (_reposModsDataCache == null)
         {
-            var deSerializer = new Deserializer();
-
-            var idCounter = 1;
-            _reposModsDataCache = deSerializer.Deserialize<ReposModsData>(DownloadRepoYaml());
-            _reposModsDataCache.modDatas = _reposModsDataCache.modDatas.OrderBy(x => x.ModName).Select(x =>
-            {
-                x.ModId = idCounter++;
-                return x;
-            }).ToList();
+            _reposModsDataCache = (new Deserializer()).Deserialize<ReposModsData>(DownloadRepoYaml());
+            _reposModsDataCache.modDatas = _reposModsDataCache.modDatas.OrderBy(x => x.ModName).ToList();
         }
         return _reposModsDataCache;
     }

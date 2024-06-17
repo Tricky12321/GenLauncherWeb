@@ -2,7 +2,7 @@ namespace GenLauncherWeb.Enums;
 
 public enum GameType
 {
-    ZH = 1,
-    Gen = 2,
+    Gen = 1,
+    ZH = 2,
         
 }
