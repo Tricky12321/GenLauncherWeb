@@ -3,7 +3,6 @@ using System.Linq;
 using System.Net.Http;
 using GenLauncherWeb.Enums;
 using GenLauncherWeb.Models;
-using Microsoft.AspNetCore.DataProtection.XmlEncryption;
 using Microsoft.Extensions.Configuration;
 using YamlDotNet.Serialization;
 

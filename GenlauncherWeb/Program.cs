@@ -1,9 +1,6 @@
-using System;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Hosting;
 using ElectronNET.API;
-using ElectronNET.API.Entities;
 
 namespace GenLauncherWeb;
 
