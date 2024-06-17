@@ -10,7 +10,7 @@
     <tr *ngFor="let mod of this.repoModsData.modDatas">
       <td>{{ mod.modName }}</td>
       <td>
-        <button class="btn btn-success btn-sm" (click)="installMod(mod.modId)">Install Mod</button>
+        <button class="btn btn-success btn-sm" (click)="addMod(mod.modName)">Add Mod</button>
       </td>
     </tr>
     </tbody>

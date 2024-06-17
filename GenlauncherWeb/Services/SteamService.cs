@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
+using GenLauncherWeb.Enums;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GenLauncherWeb.Services;
 
@@ -94,21 +96,42 @@ public class SteamService
         }
     }
 
-    public string GetGeneralInstallDir(string steamInstallPath)
+    public string GetGeneralsInstallDir(string steamInstallPath)
     {
-        string generalInstallDir = Path.Combine(steamInstallPath, "");
+        string generalInstallDir = Path.Combine(steamInstallPath, "Command and Conquer Generals");
         return generalInstallDir;
     }
-    public string GetGeneralInstallDir()
+    public string GetGeneralsInstallDir()
     {
         var steamInstallPath = GetSteamInstallPath();
-        string generalInstallDir = Path.Combine(steamInstallPath, "");
+        return GetGeneralsInstallDir(steamInstallPath);
+    }
+    
+    public string GetZeroHourInstallDir(string steamInstallPath)
+    {
+        string generalInstallDir = Path.Combine(steamInstallPath, "Command & Conquer Generals - Zero Hour");
         return generalInstallDir;
+    }
+    public string GetZeroHourInstallDir()
+    {
+        var steamInstallPath = GetSteamInstallPath();
+        return GetZeroHourInstallDir(steamInstallPath);
+    }
+
+    public string GetGameInstallDir()
+    {
+        return GetGame() == GameType.ZH ? GetZeroHourInstallDir() : GetGeneralsInstallDir();
+    }
+    
+    public static GameType GetGame()
+    {
+        // TODO: Implement way to detect game, maybe some way to select which game to mod for
+        return GameType.ZH;
     }
 
     public void CreateModsFolder()
     {
-        var installDir = GetGeneralInstallDir();
+        var installDir = GetGeneralsInstallDir();
         var modsDir = Path.Combine(installDir, "mods");
         if (!Directory.Exists(modsDir))
         {

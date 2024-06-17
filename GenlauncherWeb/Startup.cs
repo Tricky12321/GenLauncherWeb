@@ -24,9 +24,9 @@ namespace GenLauncherWeb
         public void ConfigureServices(IServiceCollection services)
         {
             // Custom Services
-            services.AddScoped<SteamService, SteamService>();
-            services.AddScoped<RepoService, RepoService>();
-
+            services.AddScoped<SteamService>();
+            services.AddScoped<RepoService>();
+            services.AddScoped<ModService>();
             services.AddElectron();
             services.AddMvc(options => options.EnableEndpointRouting = false);
             services.AddControllers()

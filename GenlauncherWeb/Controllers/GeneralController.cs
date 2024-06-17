@@ -1,3 +1,5 @@
+using GenLauncherWeb.Models;
+using GenLauncherWeb.Models.RequestObjects;
 using GenLauncherWeb.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,17 +10,19 @@ public class GeneralController : ControllerBase
 {
     public readonly SteamService _steamService;
     private readonly RepoService _repoService;
+    private readonly ModService _modService;
 
-    public GeneralController(SteamService steamService, RepoService repoService)
+    public GeneralController(SteamService steamService, RepoService repoService, ModService modService)
     {
         _steamService = steamService;
         _repoService = repoService;
+        _modService = modService;
     }
 
     [HttpGet("modlist")]
     public IActionResult GetModList()
     {
-        var modList = _repoService.GetRepoData();
+        var modList = _modService.GetUnAddedMods();
         return Ok(modList);
     }
 
@@ -26,14 +30,50 @@ public class GeneralController : ControllerBase
     public IActionResult GetSteamInstallPath()
     {
         var steamInstallPath = _steamService.GetSteamInstallPath();
-        _steamService.GetGeneralInstallDir(steamInstallPath);
+        _steamService.GetGeneralsInstallDir(steamInstallPath);
         return Ok(new { SteamInstallPath = steamInstallPath });
     }
     
-    [HttpPost("installMod")]
-    public IActionResult InstallMod([FromBody] string modName)
+    
+    [HttpGet("addedMods")]
+    public IActionResult GetAddedMods()
     {
-        _repoService.DownloadAndInstallModByName(modName);
+        var addedMods = _modService.GetAddedMods();
+        return Ok(addedMods);
+    }
+    
+    [HttpPost("removeMod")]
+    public IActionResult RemoveMod([FromBody] ModRequest modRequest)
+    {
+        _modService.RemoveModFromModList(modRequest.ModName);
+        return Ok();
+    }
+    
+    [HttpPost("addMod")]
+    public IActionResult AddMod([FromBody] ModRequest modRequest)
+    {
+        _modService.AddModToModList(modRequest.ModName);
+        return Ok();
+    }
+    
+    [HttpPost("installMod")]
+    public IActionResult InstallMod([FromBody] ModRequest modRequest)
+    {
+        _modService.InstallMod(modRequest.ModName);
+        return Ok();
+    }
+    
+    [HttpPost("uninstallMod")]
+    public IActionResult UninstallMod([FromBody] ModRequest modRequest)
+    {
+        _modService.UninstallMod(modRequest.ModName);
+        return Ok();
+    }
+    
+    [HttpPost("selectMod")]
+    public IActionResult SelectMod([FromBody] ModRequest modRequest)
+    {
+        _modService.SelectMod(modRequest.ModName);
         return Ok();
     }
 }

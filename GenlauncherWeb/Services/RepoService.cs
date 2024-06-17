@@ -11,23 +11,18 @@ namespace GenLauncherWeb.Services;
 public class RepoService
 {
     protected readonly string RepoUrl;
-    protected readonly GameType GameType = GetGameType();
     protected readonly SteamService SteamService;
     protected ReposModsData _reposModsDataCache;
 
 
     public RepoService(IConfiguration configuration, SteamService steamService)
     {
-        RepoUrl = GameType == GameType.ZH ? configuration["Repos:ZH"] : configuration["Repos:Gen"];
+        RepoUrl = SteamService.GetGame() == GameType.ZH ? configuration["Repos:ZH"] : configuration["Repos:Gen"];
         SteamService = steamService;
-        SteamService.GetGeneralInstallDir();
+        SteamService.GetGeneralsInstallDir();
     }
 
-    private static GameType GetGameType()
-    {
-        // TODO: Implement way to detect game, maybe some way to select which game to mod for
-        return GameType.ZH;
-    }
+
 
     private string DownloadRepoYaml()
     {
@@ -52,12 +47,7 @@ public class RepoService
         return _reposModsDataCache;
     }
 
-    public void DownloadAndInstallModByName(string name)
-    {
-        var repoData = GetRepoData();
-        var mod = repoData.modDatas.FirstOrDefault(x => String.Equals(x.ModName.Trim(), name.Trim(), StringComparison.CurrentCultureIgnoreCase));
-        
-    }
+
     
     
 }

@@ -2,6 +2,7 @@ import {Component, OnInit} from '@angular/core';
 import {Router} from "@angular/router";
 import {GeneralService} from "../../services/general.service";
 import {ReposModsData} from "../../models/ReposModsData";
+import {ToastrService} from "ngx-toastr";
 
 @Component({
   selector: 'add-mod',
@@ -14,7 +15,7 @@ export class AddModComponent implements OnInit {
     scrollY: "600px",
   };
 
-  constructor(public router: Router, public generalService: GeneralService) {
+  constructor(public router: Router, public generalService: GeneralService, public toastrService: ToastrService) {
 
   }
 
@@ -31,9 +32,10 @@ export class AddModComponent implements OnInit {
     })
   }
 
-  installMod(modId: number) {
-    var mod = this.repoModsData.modDatas.find(x => x.modId == modId);
-    this.generalService.installMod(mod.modName).subscribe(success => {
+  addMod(modName: string) {
+    // TODO: Add error handling
+    this.generalService.addMod(modName).subscribe(success => {
+      this.toastrService.success("Added mod " + modName);
       this.load();
     })
   }
