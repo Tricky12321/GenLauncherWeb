@@ -3,9 +3,9 @@ using System.Collections.Generic;
 
 namespace GenLauncherWeb.Models;
 
-public class GameModification : ModificationVersion
+public class GameModification : ModData
 {
-    public List<ModificationVersion> ModificationVersions { get; set; } = new List<ModificationVersion>();
+    public List<ModData> ModificationVersions { get; set; } = new List<ModData>();
 
     public int NumberInList { get; set; }
 
@@ -14,14 +14,14 @@ public class GameModification : ModificationVersion
 
     }
 
-    public GameModification(ModificationVersion version)
+    public GameModification(ModData version)
     {
         this.Name = version.Name;
         this.DependenceName = version.DependenceName;
         UpdateModificationData(version);
     }
 
-    public void UpdateModificationData(ModificationVersion version)
+    public void UpdateModificationData(ModData version)
     {
         if (ModificationVersions.Contains(version))
         {
@@ -40,7 +40,7 @@ public class GameModification : ModificationVersion
         this.UnionModifications(version);
     }
 
-    private void UpdateAdvertising(ModificationVersion version)
+    private void UpdateAdvertising(ModData version)
     {
         this.ModDBLink = version.ModDBLink;
         this.NetworkInfo = version.NetworkInfo;

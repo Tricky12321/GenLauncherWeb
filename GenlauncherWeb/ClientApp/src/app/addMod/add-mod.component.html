@@ -10,7 +10,9 @@
     <tr *ngFor="let mod of this.repoModsData.modDatas">
       <td>{{ mod.modName }}</td>
       <td>
-        <button class="btn btn-success btn-sm" (click)="addMod(mod.modName)">Add Mod</button>
+        <button class="btn btn-success btn-sm" (click)="addMod(mod.modName)" *ngIf="!mod.adding && !mod.added">Add Mod</button>
+        <span *ngIf="mod.adding && !mod.added">Adding <i class="fa fa-spin fa-spinner"></i></span>
+        <span *ngIf="mod.added" class="text-success">Added!</span>
       </td>
     </tr>
     </tbody>

@@ -11,8 +11,9 @@ namespace GenLauncherWeb.Services;
 public class ModService
 {
     private readonly RepoService _repoService;
-    private List<Mod> _addedModList;
+    private static List<Mod> _addedModList;
     private readonly SteamService _steamService;
+    private static object _lock = new object();
 
     public ModService(RepoService repoService, SteamService steamService)
     {
@@ -20,24 +21,27 @@ public class ModService
         _steamService = steamService;
         ReadModListFile();
     }
-    
+
     public void AddModToModList(string modName)
     {
-        var repoData = _repoService.GetRepoData();
-        var mod = repoData.modDatas.First(x => String.Equals(x.ModName.Trim(), modName.Trim(), StringComparison.CurrentCultureIgnoreCase));
-        // Check if the mod is already added
-        if (_addedModList.Any(x => x.ModInfo.ModName == mod.ModName))
+        lock (_lock)
         {
-            return;
+            var repoData = _repoService.GetRepoData();
+            var mod = repoData.modDatas.First(x => String.Equals(x.ModName.Trim(), modName.Trim(), StringComparison.CurrentCultureIgnoreCase));
+            // Check if the mod is already added
+            if (_addedModList.Any(x => x.ModInfo.ModName == mod.ModName))
+            {
+                return;
+            }
+
+            _addedModList.Add(new Mod
+            {
+                Installed = false,
+                InstalledVersion = "",
+                ModInfo = mod
+            });
+            UpdateModListFile();
         }
-        
-        _addedModList.Add(new Mod
-        {
-            Installed = false,
-            InstalledVersion = "",
-            ModInfo = mod
-        });
-        UpdateModListFile();
     }
 
     private void UpdateModListFile()
@@ -50,16 +54,19 @@ public class ModService
 
     private void ReadModListFile()
     {
-        var filePath = _steamService.GetGameInstallDir();
-        var jsonFile = Path.Combine(filePath, "genlauncher_modlist.json");
-        if (File.Exists(jsonFile))
+        lock (_lock)
         {
-            _addedModList = JsonConvert.DeserializeObject<List<Mod>>(File.ReadAllText(jsonFile));
-        }
-        else
-        {
-            _addedModList = new List<Mod>();
-            UpdateModListFile();
+            var filePath = _steamService.GetGameInstallDir();
+            var jsonFile = Path.Combine(filePath, "genlauncher_modlist.json");
+            if (File.Exists(jsonFile))
+            {
+                _addedModList = JsonConvert.DeserializeObject<List<Mod>>(File.ReadAllText(jsonFile));
+            }
+            else
+            {
+                _addedModList = new List<Mod>();
+                UpdateModListFile();
+            }
         }
     }
 
@@ -82,31 +89,40 @@ public class ModService
 
     public void InstallMod(string modName)
     {
-        throw new NotImplementedException("This has not been implemented yet");
-        var mod = _addedModList.First(x => x.ModInfo.ModName == modName);
-        mod.Installed = true;
-        UpdateModListFile();
+        lock (_lock)
+        {
+            throw new NotImplementedException("This has not been implemented yet");
+            var mod = _addedModList.First(x => x.ModInfo.ModName == modName);
+            mod.Installed = true;
+            UpdateModListFile();
+        }
     }
 
     public void UninstallMod(string modName)
     {
-        throw new NotImplementedException("This has not been implemented yet");
-        var mod = _addedModList.First(x => x.ModInfo.ModName == modName);
-        mod.Installed = false;
-        UpdateModListFile();
+        lock (_lock)
+        {
+            throw new NotImplementedException("This has not been implemented yet");
+            var mod = _addedModList.First(x => x.ModInfo.ModName == modName);
+            mod.Installed = false;
+            UpdateModListFile();
+        }
     }
 
     public void SelectMod(string modName)
     {
-        // Set all mods to not selected
-        _addedModList = _addedModList.Select(x =>
+        lock (_lock)
         {
-            x.Selected = false;
-            return x;
-        }).ToList();
+            // Set all mods to not selected
+            _addedModList = _addedModList.Select(x =>
+            {
+                x.Selected = false;
+                return x;
+            }).ToList();
 
-        _addedModList.First(x => x.ModInfo.ModName == modName).Selected = true;
-        UpdateModListFile();
+            _addedModList.First(x => x.ModInfo.ModName == modName).Selected = true;
+            UpdateModListFile();
+        }
     }
 
     public ReposModsData GetUnAddedMods()

@@ -9,6 +9,7 @@ import {HomeComponent} from './home/home.component';
 import {ToastrModule} from "ngx-toastr";
 import {AddModComponent} from "./addMod/add-mod.component";
 import {DataTablesModule} from "angular-datatables";
+import {NgbTooltip} from "@ng-bootstrap/ng-bootstrap";
 
 @NgModule({
   declarations: [
@@ -27,7 +28,8 @@ import {DataTablesModule} from "angular-datatables";
         {path: 'add-mod', component: AddModComponent, pathMatch: 'full'},
       ],
     ),
-    DataTablesModule
+    DataTablesModule,
+    NgbTooltip
   ],
   providers: [],
   bootstrap: [AppComponent]

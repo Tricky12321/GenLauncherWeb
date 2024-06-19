@@ -26,39 +26,51 @@ export class HomeComponent implements OnInit{
 
   load() {
     this.addedMods = null;
-    this.generalService.getAddedMods().subscribe(data => {
-      this.addedMods = data;
+    this.generalService.getAddedMods().subscribe(success => {
+      success.map(x => {
+        x.installing = false;
+        x.removing = false;
+        x.uninstalling = false;
+      });
+      this.addedMods = success;
     });
   }
 
-  InstallMod(modName: string) {
+  installMod(modName: string) {
+    var mod = this.addedMods.find(x => x.modInfo.modName == modName);
+    mod.installing = true;
     this.generalService.installMod(modName).subscribe(success => {
       this.load();
     })
   }
 
-  UninstallMod(modName: string) {
+  uninstallMod(modName: string) {
     // TODO: Implement confirm dialog
     // TODO: Implement error handling
-
+    var mod = this.addedMods.find(x => x.modInfo.modName == modName);
+    mod.uninstalling = true;
     this.generalService.uninstallMod(modName).subscribe(success => {
       this.load();
     })
 
   }
 
-  RemoveMod(modName: string) {
+  removeMod(modName: string) {
     // TODO: Implement confirm dialog
     // TODO: Implement error handling
+    var mod = this.addedMods.find(x => x.modInfo.modName == modName);
+    mod.removing = true;
     this.generalService.removeMod(modName).subscribe(success => {
       this.load();
     })
   }
 
-  SelectMod(modName: string) {
+  selectMod(modName: string) {
     // TODO: Implement error handling
     this.generalService.selectMod(modName).subscribe(success => {
       this.load();
     })
   }
+
+
 }

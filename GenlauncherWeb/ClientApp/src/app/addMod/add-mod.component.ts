@@ -28,15 +28,21 @@ export class AddModComponent implements OnInit {
 
   public load() {
     this.generalService.getModList().subscribe(success => {
-    this.repoModsData = success;
+      success.modDatas.map(x => {
+        x.adding = false;
+        x.added = false;
+      });
+      this.repoModsData = success;
     })
   }
 
   addMod(modName: string) {
     // TODO: Add error handling
+    var mod = this.repoModsData.modDatas.find(x => x.modName == modName);
+    mod.adding = true;
     this.generalService.addMod(modName).subscribe(success => {
       this.toastrService.success("Added mod " + modName);
-      this.load();
+      mod.added = true;
     })
   }
 }

@@ -22,26 +22,12 @@ public class RepoService
         SteamService.GetGeneralsInstallDir();
     }
 
-
-
-    private string DownloadRepoYaml()
-    {
-        SteamService.CreateModsFolder();
-        var rawRepoYaml = "";
-        using (var client = new HttpClient())
-        {
-            client.GetAsync(RepoUrl).GetAwaiter().GetResult();
-            rawRepoYaml = client.GetStringAsync(RepoUrl).GetAwaiter().GetResult();
-        }
-
-        return rawRepoYaml;
-    }
-
     public ReposModsData GetRepoData()
     {
         if (_reposModsDataCache == null)
         {
-            _reposModsDataCache = (new Deserializer()).Deserialize<ReposModsData>(DownloadRepoYaml());
+            SteamService.CreateModsFolder();
+            _reposModsDataCache = (new Deserializer()).Deserialize<ReposModsData>(Extensions.DownloadYaml(RepoUrl));
             _reposModsDataCache.modDatas = _reposModsDataCache.modDatas.OrderBy(x => x.ModName).ToList();
         }
         return _reposModsDataCache;
