@@ -2,6 +2,9 @@
 
 This is a project to rewrite the current GenLauncher (.NET Framework / WPF) application into a more cross-platform solution.
 
+***This project is ONLY for the Steam version of the game.*** At this time, there is no intention to support the non-steam version of the game.
+
+
 This will be done using the following:
 * C\# .NET Core backend (webserver)
 * Web - Angular frontend
@@ -46,8 +49,31 @@ electronize build /target ["win" | "osx" | "linux"] /electron-arch ["ia32" | "x6
 ```
 
 
+
+
+# Before a first release, the following need to be solved/implemented:
+- [ ] Implement base install method using symbolic links
+- [ ] Implement base install method using copy/move (for non symlink systems)
+- [ ] Implement install for Generals
+- [ ] Implement install for Zero Hour
+- [ ] Implement a way to detect games (Both ZH and Gen)
+- [x] Implement a way to download from S3
+- [ ] Implement a way to download from Onedrive
+- [ ] Implement a way to download from Dropbox
+
+## Optional nice-to-have
+- [ ] Language translations
+
+
 # Credit
 
 This example of Angular/C#/Electron: [AngularWithDotNetCoreElectronNET](https://github.com/rajeshsuramalla/AngularWithDotNetCoreElectronNET)
 
 GenLauncher by p0ls3r [GenLauncher](https://github.com/p0ls3r/GenLauncher) | [Discord](https://discord.gg/fFGpudz5hV)
+
+
+
+# Documentation
+
+All files are downloaded inside the game folder in steam, and placed inside a "mods" folder. 
+From here all files will either be copied or symlinked into the main game folder.
