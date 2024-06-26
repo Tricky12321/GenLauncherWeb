@@ -1,10 +1,14 @@
 <div class="row pt-2">
+  <div class="container" *ngIf="this.addedMods == null">
+    <i class="fa fa-spin fa-spinner justify-content-center loading"></i>
+  </div>
   <table datatable [dtOptions]="this.dtOptions" class="table table-striped table-hover" *ngIf="this.addedMods != null">
     <thead>
     <tr>
       <th></th>
       <th>Name</th>
       <th>Version</th>
+      <th>Install Size</th>
       <th>Controls</th>
     </tr>
     </thead>
@@ -13,20 +17,27 @@
       <td><img class="mod-image" [src]="mod.modData.uiImageSourceLink"></td>
       <td>{{ mod.modInfo.modName }}</td>
       <td>
-        {{ mod.installed ? mod.installedVersion : "Not installed" }}<br>
-        <small *ngIf="!mod.installed">({{ mod.modData.version }})</small>
+        {{ mod.downloaded ? mod.downloadedVersion : "Not installed" }}<br>
+        <small *ngIf="!mod.downloaded">({{ mod.modData.version }})</small>
+      </td>
+      <td [attr.data-sort]="mod.totalSize">
+        <ng-container *ngIf="mod.downloaded">
+          <span>{{mod.totalSize | byteToGb: 1}}</span>
+        </ng-container>
       </td>
       <td>
-        <ng-container *ngIf="!mod.installing && !mod.uninstalling && !mod.removing">
-          <button class="btn btn-sm btn-success me-1" (click)="installMod(mod.modInfo.modName)" *ngIf="!mod.installed">Install</button>
-          <button class="btn btn-sm btn-outline-danger me-1" (click)="removeMod(mod.modInfo.modName)" *ngIf="!mod.installed">Remove</button>
-          <button class="btn btn-sm btn-danger me-1" (click)="uninstallMod(mod.modInfo.modName)" *ngIf="mod.installed">Uninstall</button>
-          <button class="btn btn-sm btn-outline-primary me-1" (click)="selectMod(mod.modInfo.modName)" *ngIf="mod.installed">Remove</button>
+        <ng-container *ngIf="!mod.downloading && !mod.uninstalling && !mod.deleting">
+          <button class="btn btn-sm btn-success me-1" [disabled]="this.lockButtons" (click)="downloadMod(mod.modInfo.modName)" *ngIf="!mod.downloaded">Download</button>
+          <button class="btn btn-sm btn-outline-danger me-1" [disabled]="this.lockButtons" (click)="removeMod(mod.modInfo.modName)" *ngIf="!mod.downloaded">Remove</button>
+          <button class="btn btn-sm btn-danger me-1" [disabled]="this.lockButtons" (click)="uninstallMod(mod.modInfo.modName)" *ngIf="mod.downloaded && mod.installed">Uninstall</button>
+          <button class="btn btn-sm btn-success me-1" [disabled]="this.lockButtons" (click)="installMod(mod.modInfo.modName)" *ngIf="mod.downloaded && !mod.installed">Install mod</button>
+          <button class="btn btn-sm btn-danger me-1" [disabled]="this.lockButtons" (click)="deleteMod(mod.modInfo.modName)" *ngIf="mod.downloaded && !mod.installed">Delete files</button>
         </ng-container>
-        <span *ngIf="mod.removing">Removing <i class="fa fa-spin fa-spinner"></i></span>
-        <span *ngIf="mod.installing">Installing <i class="fa fa-spin fa-spinner"></i></span>
+        <ng-container *ngIf="this.downloadingMod == mod && this.downloadProgress != null && mod.downloading">
+          <span *ngIf="mod.downloading">Downloading {{Math.floor(this.downloadProgress.percentage)}}%<i class="fa fa-spin fa-spinner"></i></span>
+        </ng-container>
+        <span *ngIf="mod.deleting">Deleting files <i class="fa fa-spin fa-spinner"></i></span>
         <span *ngIf="mod.uninstalling">Uninstalling <i class="fa fa-spin fa-spinner"></i></span>
-
       </td>
     </tr>
     </tbody>

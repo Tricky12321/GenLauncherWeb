@@ -26,6 +26,8 @@ namespace GenLauncherWeb
             // Custom Services
             services.AddScoped<SteamService>();
             services.AddScoped<RepoService>();
+            services.AddScoped<S3StorageService>();
+            services.AddScoped<FileService>();
             services.AddScoped<ModService>();
             services.AddElectron();
             services.AddMvc(options => options.EnableEndpointRouting = false);

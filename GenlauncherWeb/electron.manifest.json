@@ -11,7 +11,7 @@
     "appId": "com.GenlauncherWeb.app",
     "productName": "GenlauncherWeb",
     "copyright": "Copyright © 2024",
-    "buildVersion": "1.0.0",
+    "buildVersion": "0.0.1",
     "compression": "maximum",
     "directories": {
       "output": "../../../bin/Desktop"

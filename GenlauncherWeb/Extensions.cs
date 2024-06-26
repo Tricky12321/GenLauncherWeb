@@ -1,5 +1,12 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using GenLauncherWeb.Models;
+using HtmlAgilityPack;
 using YamlDotNet.Serialization;
 
 namespace GenLauncherWeb;
@@ -15,7 +22,7 @@ public static class Extensions
         var decodedYaml = deserializer.Deserialize<ModData>(modYaml);
         return decodedYaml;
     }
-    
+
     public static string DownloadYaml(string url)
     {
         string data;
@@ -24,6 +31,92 @@ public static class Extensions
             client.GetAsync(url).GetAwaiter().GetResult();
             data = client.GetStringAsync(url).GetAwaiter().GetResult();
         }
+
         return data;
+    }
+
+    public static string ParseDownloadLink(this string link)
+    {
+        //replaced dl=0 to dl=1 to get download link
+        //MyListBoxData.Add(new Modification("Rise of The Reds", "1.87 PB 2.0", "1.87 PB 2.0", "https://www.dropbox.com/s/nh8n8axi95gge41/ROTR.7z?dl=1", new BitmapImage(new Uri("Images/1.png", UriKind.Relative))));
+        //generate from https://onedrive.live.com/?authkey=%21AIWtLuu54V5qKQ4&cid=896C9369E9176506&id=896C9369E9176506%21464&parId=896C9369E9176506%21463&o=OneUp
+        //MyListBoxData.Add(new Modification("TEOD", "0.97.5", "0.97.5", "https://onedrive.live.com/download?cid=896C9369E9176506&resid=896C9369E9176506%21464&authkey=%21AIWtLuu54V5qKQ4"));
+        //https://www.dropbox.com/s/ec9fjg909fkrvtt/TEOD.7z?dl=0            
+
+        if (link.Contains("dropbox.com"))
+        {
+            link = link.Replace("?dl=0", "?dl=1");
+            return link;
+        }
+
+        if (link.Contains("onedrive.live.com"))
+        {
+            if (link.Contains("embed"))
+            {
+                return link.Replace("embed", "download");
+            }
+
+            var linkParts = link.Replace("https://onedrive.live.com/?", string.Empty).Split('&').ToList();
+
+            var cid = linkParts.Where(t => t.Contains("cid=")).Select(t => t.Replace("cid=", string.Empty)).FirstOrDefault();
+            var authKey = linkParts.Where(t => t.Contains("authkey=")).Select(t => t.Replace("authkey=", string.Empty)).FirstOrDefault();
+            var resid = linkParts.Where(t => t.Contains("id=") && !t.Contains("cid=")).Select(t => t.Replace("id=", string.Empty)).FirstOrDefault();
+
+            return String.Format("https://onedrive.live.com/download?cid={0}&resid={1}&authkey={2}", cid, resid, authKey);
+        }
+
+        return link;
+    }
+
+    public static bool HasS3Storage(this Mod mod)
+    {
+        return !string.IsNullOrEmpty(mod.ModData.S3HostLink);
+    }
+
+    public static string CleanString(this string input)
+    {
+        // Remove non-ASCII characters
+        string asciiOnly = Regex.Replace(input, @"[^\x00-\x7F]", "");
+
+        // Remove special characters except a-z and A-Z, replace spaces with underscores
+        string cleaned = Regex.Replace(asciiOnly, @"[^a-zA-Z\s]", "");
+        cleaned = Regex.Replace(cleaned, @"\s+", "_");
+
+        return cleaned;
+    }
+
+    public static bool CreateFolderIfIsNotExist(this string path)
+    {
+        if (!Directory.Exists(path))
+        {
+            Directory.CreateDirectory(path);
+            return true;
+        }
+
+        return false;
+    }
+
+
+    public static string GetMd5HashOfFile(this string path)
+    {
+        using (var md5 = MD5.Create())
+        {
+            using (var stream = File.OpenRead(path))
+            {
+                var hash = md5.ComputeHash(stream);
+                return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+            }
+        }
+    }
+
+    public static bool UninstallMod(this Mod mod)
+    {
+        Directory.Delete(mod.ModDir, true);
+        mod.ModDir = "";
+        mod.TotalSize = 0;
+        mod.DownloadedFiles = new List<string>();
+        mod.DownloadedVersion = "";
+        mod.Installed = false;
+        return true;
     }
 }

@@ -3,3 +3,8 @@
   display: flex;
   margin-top: 10px;
 }
+
+.loading {
+  font-size: 5em;
+  margin-top: 10px;
+}

@@ -10,6 +10,8 @@ import {ToastrModule} from "ngx-toastr";
 import {AddModComponent} from "./addMod/add-mod.component";
 import {DataTablesModule} from "angular-datatables";
 import {NgbTooltip} from "@ng-bootstrap/ng-bootstrap";
+import {ByteToMbPipe} from "../pipes/ByteToMb.pipe";
+import {ByteToGbPipe} from "../pipes/ByteToGb.pipe";
 
 @NgModule({
   declarations: [
@@ -29,7 +31,9 @@ import {NgbTooltip} from "@ng-bootstrap/ng-bootstrap";
       ],
     ),
     DataTablesModule,
-    NgbTooltip
+    NgbTooltip,
+    ByteToMbPipe,
+    ByteToGbPipe
   ],
   providers: [],
   bootstrap: [AppComponent]

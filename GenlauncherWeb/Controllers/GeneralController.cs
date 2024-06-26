@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using GenLauncherWeb.Models;
 using GenLauncherWeb.Models.RequestObjects;
 using GenLauncherWeb.Services;
@@ -56,11 +57,18 @@ public class GeneralController : ControllerBase
         return Ok();
     }
     
-    [HttpPost("installMod")]
-    public IActionResult InstallMod([FromBody] ModRequest modRequest)
+    [HttpPost("downloadMod")]
+    public async Task<IActionResult> DownloadMod([FromBody] ModRequest modRequest)
     {
-        _modService.InstallMod(modRequest.ModName);
+        await _modService.DownloadMod(modRequest.ModName);
         return Ok();
+    }
+
+    [HttpGet("getModDownloadProgress/{modName}")]
+    public IActionResult GetModDownloadProgress(string modName)
+    {
+        var modInstallInfo = _modService.GetModDownloadProgress(modName);
+        return Ok(modInstallInfo);
     }
     
     [HttpPost("uninstallMod")]
@@ -76,4 +84,12 @@ public class GeneralController : ControllerBase
         _modService.SelectMod(modRequest.ModName);
         return Ok();
     }
+    
+    [HttpPost("deleteMod")]
+    public IActionResult DeleteMod([FromBody] ModRequest modRequest)
+    {
+        _modService.DeleteMod(modRequest.ModName);
+        return Ok();
+    }
 }
+
