@@ -4,7 +4,6 @@ export class LauncherOptions {
 }
 
 export enum InstallMethod {
-  MoveFiles,
   CopyFiles,
   SymLink
 }

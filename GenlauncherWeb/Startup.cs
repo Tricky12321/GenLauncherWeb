@@ -29,6 +29,7 @@ namespace GenLauncherWeb
             services.AddScoped<S3StorageService>();
             services.AddScoped<FileService>();
             services.AddScoped<ModService>();
+            services.AddScoped<OptionsService>();
             services.AddElectron();
             services.AddMvc(options => options.EnableEndpointRouting = false);
             services.AddControllers()

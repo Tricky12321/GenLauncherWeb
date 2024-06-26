@@ -46,4 +46,16 @@ export class AppComponent implements OnInit {
   getModsButtonText() {
     return window.location.pathname == '/add-mod' ? 'Installed mods' : 'Install mods';
   }
+
+  showOptions() {
+    this.router.navigate(['options']);
+  }
+
+  isOnOptionsPage() {
+    return window.location.pathname == '/options';
+  }
+
+  goHome() {
+    this.router.navigate(['']);
+  }
 }

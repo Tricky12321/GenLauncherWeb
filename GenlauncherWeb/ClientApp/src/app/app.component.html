@@ -5,8 +5,11 @@
       <div class="row">
         <div class="col">
           <div class="row">
-            <div class="col-2">
+            <div class="col-2" *ngIf="!isOnOptionsPage()">
               <button class="btn btn-outline-primary" (click)="toggleModsView()">{{getModsButtonText()}}</button>
+            </div>
+            <div class="col-2" *ngIf="isOnOptionsPage()">
+              <button class="btn btn-primary" (click)="goHome()">Return</button>
             </div>
             <div class="col-5">
               <button class="btn btn-outline-primary">Patches for General Zero Hour</button>
@@ -36,7 +39,7 @@
       </div>
       <div class="row">
         <div class="col">
-          <button class="btn btn-outline-primary full-width">Options</button>
+          <button class="btn btn-outline-primary full-width" (click)="showOptions()">Options</button>
         </div>
       </div>
       <div class="row">

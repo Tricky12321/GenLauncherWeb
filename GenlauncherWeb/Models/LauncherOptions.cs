@@ -1,3 +1,5 @@
+using GenLauncherWeb.Services;
+
 namespace GenLauncherWeb.Models;
 
 public class LauncherOptions
@@ -8,14 +10,13 @@ public class LauncherOptions
     {
         return new LauncherOptions()
         {
-            InstallMethod = InstallMethod.SymLink
+            InstallMethod = OptionsService.IsSymlinksSupported() ? InstallMethod.SymLink : InstallMethod.CopyFiles
         };
     }
 }
 
 public enum InstallMethod
 {
-    MoveFiles,
     CopyFiles,
     SymLink
 }

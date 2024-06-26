@@ -1,3 +1,26 @@
-<div class="row pt-2">
+<div class="row pt-2" *ngIf="!this.loading">
+  <div class="form-group">
+    <label>Install method</label>
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="installMethod" id="installMethod-symlink" [checked]="launcherOptions.InstallMethod == InstallMethod.SymLink"
+             [disabled]="!this.isSymlinksSupported">
+      <label class="form-check-label" for="installMethod-symlink">
+        Symlink files (recommended)
+      </label>
+      <i class="fa fa-circle-info ms-2" ngbTooltip="Symlinks are not supported on this system" *ngIf="!this.isSymlinksSupported"></i>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="installMethod" id="installMethod-copy" [checked]="launcherOptions.InstallMethod == InstallMethod.CopyFiles">
+      <label class="form-check-label" for="installMethod-symlink">
+        Copy files
+      </label>
+    </div>
+  </div>
+</div>
 
+<div class="row">
+  <div class="col">
+    <button class="btn btn-danger me-2" (click)="resetOptions()">Reset</button>
+    <button class="btn btn-success me-2" (click)="saveOptions()">Save options</button>
+  </div>
 </div>

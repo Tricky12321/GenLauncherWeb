@@ -11,11 +11,19 @@ export class OptionsService {
   }
 
   getOptions() {
-    return this.http.get('/api/options');
+    return this.http.get<LauncherOptions>('/api/options');
   }
 
   setOptions(launcherOptions: LauncherOptions) {
     return this.http.post('/api/options', launcherOptions);
+  }
+
+  resetOptions() {
+    return this.http.get<LauncherOptions>('/api/options/reset');
+  }
+
+  getIsSymLinksSupported() {
+    return this.http.get<{ isSymlinksSupported: boolean }>('/api/options/isSymlinksSupported');
   }
 
 
