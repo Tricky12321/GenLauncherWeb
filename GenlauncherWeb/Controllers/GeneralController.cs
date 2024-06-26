@@ -1,5 +1,4 @@
 using System.Threading.Tasks;
-using GenLauncherWeb.Models;
 using GenLauncherWeb.Models.RequestObjects;
 using GenLauncherWeb.Services;
 using Microsoft.AspNetCore.Mvc;

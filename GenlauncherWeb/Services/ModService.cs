@@ -20,6 +20,7 @@ public class ModService
     private readonly S3StorageService _s3StorageService;
     private static object _lock = new object();
     private static ConcurrentDictionary<string, ModDownloadProgress> _modInstallInfo = new ConcurrentDictionary<string, ModDownloadProgress>();
+    private const string ModListFile = "genlauncher_modlist.json";
 
     public ModService(RepoService repoService, SteamService steamService, S3StorageService s3StorageService)
     {
@@ -55,7 +56,7 @@ public class ModService
     private void UpdateModListFile()
     {
         var filePath = _steamService.GetGameInstallDir();
-        var jsonFile = Path.Combine(filePath, "genlauncher_modlist.json");
+        var jsonFile = Path.Combine(filePath, ModListFile);
         var json = JsonConvert.SerializeObject(_addedModList);
         File.WriteAllText(jsonFile, json);
     }
@@ -65,7 +66,7 @@ public class ModService
         lock (_lock)
         {
             var filePath = _steamService.GetGameInstallDir();
-            var jsonFile = Path.Combine(filePath, "genlauncher_modlist.json");
+            var jsonFile = Path.Combine(filePath, ModListFile);
             if (File.Exists(jsonFile))
             {
                 _addedModList = JsonConvert.DeserializeObject<List<Mod>>(File.ReadAllText(jsonFile));

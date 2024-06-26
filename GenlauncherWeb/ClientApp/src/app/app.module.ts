@@ -12,12 +12,14 @@ import {DataTablesModule} from "angular-datatables";
 import {NgbTooltip} from "@ng-bootstrap/ng-bootstrap";
 import {ByteToMbPipe} from "../pipes/ByteToMb.pipe";
 import {ByteToGbPipe} from "../pipes/ByteToGb.pipe";
+import {OptionsComponent} from "./options/options.component";
 
 @NgModule({
   declarations: [
     AppComponent,
     HomeComponent,
-    AddModComponent
+    AddModComponent,
+    OptionsComponent,
   ],
   imports: [
     BrowserModule,
@@ -27,7 +29,8 @@ import {ByteToGbPipe} from "../pipes/ByteToGb.pipe";
     DataTablesModule,
     RouterModule.forRoot([
         {path: '', component: HomeComponent, pathMatch: 'full'},
-        {path: 'add-mod', component: AddModComponent, pathMatch: 'full'},
+      {path: 'add-mod', component: AddModComponent, pathMatch: 'full'},
+      {path: 'options', component: OptionsComponent, pathMatch: 'full'},
       ],
     ),
     DataTablesModule,
