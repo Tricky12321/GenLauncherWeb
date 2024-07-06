@@ -1,9 +1,9 @@
 export class LauncherOptions {
 
-  public InstallMethod: InstallMethod = InstallMethod.SymLink;
+  public installMethod: InstallMethod;
 }
 
 export enum InstallMethod {
-  CopyFiles,
-  SymLink
+  CopyFiles = 0,
+  SymLink = 1
 }

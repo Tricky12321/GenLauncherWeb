@@ -10,7 +10,7 @@ public class LauncherOptions
     {
         return new LauncherOptions()
         {
-            InstallMethod = OptionsService.IsSymlinksSupported() ? InstallMethod.SymLink : InstallMethod.CopyFiles
+            InstallMethod = SymLinkService.IsSymlinksSupported() ? InstallMethod.SymLink : InstallMethod.CopyFiles
         };
     }
 }

@@ -33,7 +33,7 @@ export class OptionsComponent implements OnInit {
       this.loading = false;
     })
     this.optionsService.getIsSymLinksSupported().subscribe(success => {
-      this.isSymlinksSupported = success.isSymlinksSupported;
+      this.isSymlinksSupported = success.symlinkSupported;
     });
   }
 
@@ -48,8 +48,16 @@ export class OptionsComponent implements OnInit {
   }
 
   saveOptions() {
+    this.loading = true;
     this.optionsService.setOptions(this.launcherOptions).subscribe(success => {
+      this.loading = false;
       this.toastrService.success("Options saved");
+      this.launcherOptions = success;
     })
+  }
+
+  updateInstallMethod(event: Event) {
+    var target = event.target as HTMLInputElement;
+    this.launcherOptions.installMethod = target.value == "1" ? InstallMethod.SymLink : InstallMethod.CopyFiles;
   }
 }

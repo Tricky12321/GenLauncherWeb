@@ -3,6 +3,7 @@ import {HttpClient} from "@angular/common/http";
 import {ReposModsData} from "../models/ReposModsData";
 import {Mod} from "../models/Mod";
 import {ModDownloadProgress} from "../models/ModDownloadProgress";
+import {InstallationStatus} from "../models/InstallationStatus";
 
 @Injectable({
   providedIn: 'root',
@@ -54,6 +55,13 @@ export class GeneralService {
 
   deleteMod(modName: string) {
     return this.http.post('/api/general/deleteMod',  {modName: modName});
+  }
 
+  getInstallationStatus() {
+    return this.http.get<InstallationStatus>('/api/general/GetInstallationStatus');
+  }
+
+  installGenTool() {
+    return this.http.get('/api/general/installGenTool');
   }
 }

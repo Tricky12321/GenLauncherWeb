@@ -23,8 +23,7 @@ public class OptionsController : ControllerBase
     [HttpPost]
     public IActionResult SetOptions([FromBody] LauncherOptions launcherOptions)
     {
-        _optionsService.SetOptions(launcherOptions);
-        return Ok();
+        return Ok(_optionsService.SetOptions(launcherOptions));
     }
 
     [HttpGet("reset")]
@@ -39,7 +38,7 @@ public class OptionsController : ControllerBase
     {
         return Ok(new
         {
-            SymlinkSupported = OptionsService.IsSymlinksSupported()
+            SymlinkSupported = SymLinkService.IsSymlinksSupported()
         });
     }
 }

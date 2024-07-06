@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using GenLauncherWeb.Enums;
 using Microsoft.Extensions.DependencyInjection;
@@ -122,6 +125,10 @@ public class SteamService
     {
         return GetGame() == GameType.ZH ? GetZeroHourInstallDir() : GetGeneralsInstallDir();
     }
+    public string GetCommonFolder()
+    {
+        return GetSteamInstallPath();
+    }
     
     public static GameType GetGame()
     {
@@ -132,10 +139,56 @@ public class SteamService
     public void CreateModsFolder()
     {
         var installDir = GetGeneralsInstallDir();
-        var modsDir = Path.Combine(installDir, "mods");
+        var modsDir = Path.Combine(installDir, "_mods");
         if (!Directory.Exists(modsDir))
         {
             Directory.CreateDirectory(modsDir);
         }
+    }
+
+    public bool CheckGameRunning()
+    {
+        // Implement a way to detect if a process called Generals.exe is running
+        string processName = "generals.exe";
+        
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return Process.GetProcesses()
+                .Any(p => string.Equals(p.ProcessName, processName.Replace(".exe", ""), StringComparison.OrdinalIgnoreCase));
+        }
+        else
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "ps",
+                Arguments = "aux",
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using (var process = Process.Start(startInfo))
+            using (var reader = process.StandardOutput)
+            {
+                string output = reader.ReadToEnd();
+                return output.ToLower().Contains(processName);
+            }
+        }
+    }
+
+    public string GetModDir()
+    {
+        return Path.Combine(GetCommonFolder(), "GenLauncherMods");
+    }
+
+    public string GetSteamUserdataDir()
+    {
+        return Path.Combine(GetSteamInstallPath(), "../userdata");
+    }
+    
+    public dynamic GetSteamUserConfig()
+    {
+        var userdataDir = GetSteamUserdataDir();
+        var userDataDirFolders = Directory.GetDirectories().Where(x => x != "0");
     }
 }

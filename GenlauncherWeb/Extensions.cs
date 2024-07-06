@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using GenLauncherWeb.Models;
 using HtmlAgilityPack;
@@ -118,5 +119,61 @@ public static class Extensions
         mod.DownloadedVersion = "";
         mod.Installed = false;
         return true;
+    }
+    
+    public static string EscapeLinuxPath(this string path)
+    {
+        var escapedPath = new StringBuilder();
+        escapedPath.Append('\'');
+        
+        foreach (char c in path)
+        {
+            if (c == '\'')
+            {
+                escapedPath.Append("'\\''");
+            }
+            else
+            {
+                escapedPath.Append(c);
+            }
+        }
+        
+        escapedPath.Append('\'');
+        return escapedPath.ToString();
+    }
+    
+    public static string FindFileRecursively(string folderPath, string fileName)
+    {
+        try
+        {
+            foreach (string file in Directory.GetFiles(folderPath))
+            {
+                if (Path.GetFileName(file).Equals(fileName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return file;
+                }
+            }
+
+            foreach (string directory in Directory.GetDirectories(folderPath))
+            {
+                string foundFile = FindFileRecursively(directory, fileName);
+                if (foundFile != null)
+                {
+                    return foundFile;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred: {ex.Message}");
+        }
+
+        return null;
+    }
+    
+    public static bool IsSymbolicLink(string path)
+    {
+        FileInfo fileInfo = new FileInfo(path);
+        return fileInfo.Attributes.HasFlag(FileAttributes.ReparsePoint);
     }
 }

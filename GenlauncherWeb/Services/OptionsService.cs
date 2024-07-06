@@ -34,10 +34,11 @@ public class OptionsService
         }
     }
 
-    public void SetOptions(LauncherOptions launcherOptions)
+    public LauncherOptions SetOptions(LauncherOptions launcherOptions)
     {
         _launcherOptions = launcherOptions;
         UpdateOptionsFile();
+        return _launcherOptions;
     }
 
     public LauncherOptions GetOptions()
@@ -54,83 +55,7 @@ public class OptionsService
         File.WriteAllText(jsonFile, json);
     }
 
-    public static bool IsSymlinksSupported()
-    {
-        // Check the platform
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            // On Windows, symbolic link creation requires either:
-            // - Administrator privileges, or
-            // - Developer mode enabled on Windows 10 and above
-            string tempFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-            string symlink = tempFile + "_symlink";
-            try
-            {
-                // Attempt to create a symlink
-                File.Create(tempFile).Dispose();
-                CreateSymbolicLink(symlink, tempFile, 0);
-                bool success = File.Exists(symlink);
-                File.Delete(tempFile);
-                if (success)
-                {
-                    File.Delete(symlink);
-                }
-
-                return success;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            // On Linux and macOS, check if we can create a symlink in a temporary directory
-            string tempFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-            string symlink = tempFile + "_symlink";
-            try
-            {
-                // Attempt to create a symlink
-                File.Create(tempFile).Dispose();
-                UnixCreateSymbolicLink(symlink, tempFile);
-                bool success = File.Exists(symlink);
-                File.Delete(tempFile);
-                if (success)
-                {
-                    File.Delete(symlink);
-                }
-
-                return success;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        return false;
-    }
-
-    [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-    private static extern bool CreateSymbolicLink(string lpSymlinkFileName, string lpTargetFileName, int dwFlags);
-
-    private static void UnixCreateSymbolicLink(string symlink, string target)
-    {
-        var info = new System.Diagnostics.ProcessStartInfo("ln", $"-s \"{target}\" \"{symlink}\"")
-        {
-            RedirectStandardError = true,
-            UseShellExecute = false
-        };
-        using (var process = System.Diagnostics.Process.Start(info))
-        {
-            process.WaitForExit();
-            if (process.ExitCode != 0)
-            {
-                throw new Exception("Failed to create symlink");
-            }
-        }
-    }
+    
 
     public LauncherOptions ResetOptions()
     {

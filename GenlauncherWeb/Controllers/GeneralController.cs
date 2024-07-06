@@ -76,18 +76,40 @@ public class GeneralController : ControllerBase
         _modService.UninstallMod(modRequest.ModName);
         return Ok();
     }
-    
+    /*
     [HttpPost("selectMod")]
     public IActionResult SelectMod([FromBody] ModRequest modRequest)
     {
         _modService.SelectMod(modRequest.ModName);
         return Ok();
     }
+    */
     
     [HttpPost("deleteMod")]
     public IActionResult DeleteMod([FromBody] ModRequest modRequest)
     {
         _modService.DeleteMod(modRequest.ModName);
+        return Ok();
+    }
+    
+    [HttpPost("installMod")]
+    public IActionResult InstallMod([FromBody] ModRequest modRequest)
+    {
+        _modService.InstallMod(modRequest.ModName);
+        return Ok();
+    }
+    
+    [HttpGet("GetInstallationStatus")]
+    public IActionResult GetInstallationStatus()
+    {
+        var status = _modService.GetInstallationStatus();
+        return Ok(status);
+    }
+    
+    [HttpGet("installGenTool")]
+    public IActionResult InstallGenTool()
+    {
+        _modService.EnsureGenToolInstalled();
         return Ok();
     }
 }

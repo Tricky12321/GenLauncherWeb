@@ -3,6 +3,7 @@ import {GameService} from "../services/game.service";
 import {ToastrService} from "ngx-toastr";
 import {GeneralService} from "../services/general.service";
 import {Router} from "@angular/router";
+import {InstallationStatus} from "../models/InstallationStatus";
 
 @Component({
   selector: 'app-root',
@@ -10,6 +11,8 @@ import {Router} from "@angular/router";
   styleUrls: ['./app.component.css']
 })
 export class AppComponent implements OnInit {
+  public installationStatus: InstallationStatus | null = null;
+  public installingGenTool: boolean = false;
   constructor(private gameService: GameService, private generalService: GeneralService, private toastrService: ToastrService, public router: Router) {
 
   }
@@ -31,6 +34,10 @@ export class AppComponent implements OnInit {
     this.generalService.getSteamPath().subscribe(result => {
       console.log("Steam path: " + result.steamInstallPath);
       this.steamPath = result.steamInstallPath;
+    })
+
+    this.generalService.getInstallationStatus().subscribe(success => {
+      this.installationStatus = success;
     })
   }
 
@@ -57,5 +64,13 @@ export class AppComponent implements OnInit {
 
   goHome() {
     this.router.navigate(['']);
+  }
+
+
+  installGenTool() {
+    this.installingGenTool = true;
+    this.generalService.installGenTool().subscribe(success => {
+      location.reload();
+    });
   }
 }

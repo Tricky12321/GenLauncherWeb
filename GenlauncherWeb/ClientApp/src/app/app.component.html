@@ -48,6 +48,31 @@
         </div>
       </div>
       <div class="row">
+        <table>
+          <tr>
+            <td>GenTool</td>
+            <td>
+              <i *ngIf="this.installationStatus == null" class="fa fa-spin fa-spinner"></i>
+              <i *ngIf="this.installationStatus != null && this.installationStatus.genTool" class="fa fa-check text-success"></i>
+              <i *ngIf="this.installationStatus != null && !this.installationStatus.genTool" class="fa fa-times text-danger"></i>
+            </td>
+            <td>
+              <button class="btn btn-success btn-sm" (click)="installGenTool()" *ngIf="!this.installationStatus.genTool && !this.installingGenTool">Install</button>
+              <i class="fa fa-spinner fa-spin" *ngIf="this.installingGenTool"></i>
+            </td>
+          </tr>
+          <tr>
+            <td>Modded Launcher</td>
+            <td>
+              <i *ngIf="this.installationStatus == null" class="fa fa-spin fa-spinner"></i>
+              <i *ngIf="this.installationStatus != null && this.installationStatus.moddedLauncher" class="fa fa-check text-success"></i>
+              <i *ngIf="this.installationStatus != null && !this.installationStatus.moddedLauncher" class="fa fa-times text-danger"></i>
+            </td>
+            <td></td>
+          </tr>
+        </table>
+      </div>
+      <div class="row">
         <div class="col">
           <p>{{this.steamPath}}</p>
         </div>
