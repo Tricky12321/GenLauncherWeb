@@ -186,9 +186,4 @@ public class SteamService
         return Path.Combine(GetSteamInstallPath(), "../userdata");
     }
     
-    public dynamic GetSteamUserConfig()
-    {
-        var userdataDir = GetSteamUserdataDir();
-        var userDataDirFolders = Directory.GetDirectories().Where(x => x != "0");
-    }
 }
