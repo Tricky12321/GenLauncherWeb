@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -71,7 +72,7 @@ public static class Extensions
 
     public static bool HasS3Storage(this Mod mod)
     {
-        return !string.IsNullOrEmpty(mod.ModData.S3HostLink);
+        return !string.IsNullOrEmpty(mod.ModData.S3HostLink) && !string.IsNullOrEmpty(mod.ModData.S3FolderName) && !string.IsNullOrEmpty(mod.ModData.S3BucketName);
     }
 
     public static string CleanString(this string input)
@@ -120,12 +121,12 @@ public static class Extensions
         mod.Installed = false;
         return true;
     }
-    
+
     public static string EscapeLinuxPath(this string path)
     {
         var escapedPath = new StringBuilder();
         escapedPath.Append('\'');
-        
+
         foreach (char c in path)
         {
             if (c == '\'')
@@ -137,11 +138,11 @@ public static class Extensions
                 escapedPath.Append(c);
             }
         }
-        
+
         escapedPath.Append('\'');
         return escapedPath.ToString();
     }
-    
+
     public static string FindFileRecursively(string folderPath, string fileName)
     {
         try
@@ -170,10 +171,71 @@ public static class Extensions
 
         return null;
     }
-    
+
     public static bool IsSymbolicLink(string path)
     {
         FileInfo fileInfo = new FileInfo(path);
         return fileInfo.Attributes.HasFlag(FileAttributes.ReparsePoint);
     }
+
+    private static readonly Dictionary<string, string> ArchiveMimeTypeMappings = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase)
+    {
+        { "application/zip", ".zip" },
+        { "application/x-7z-compressed", ".7z" },
+        { "application/x-rar-compressed", ".rar" },
+        { "application/gzip", ".gz" },
+        { "application/x-tar", ".tar" },
+        { "application/x-bzip2", ".bz2" },
+        { "application/x-lzip", ".lz" },
+        { "application/x-xz", ".xz" },
+        { "application/x-shar", ".shar" },
+        { "application/x-szip", ".sz" },
+    };
+
+    public static string GetFileExtensionFromMimeType(this string mimeType)
+    {
+        if (ArchiveMimeTypeMappings.TryGetValue(mimeType, out string extension))
+        {
+            return extension;
+        }
+
+        return null; // Or some default extension like ".bin"
+    }
+
+    public static bool ExtractFile(this string fileName)
+    {
+        var fileFolder = Path.GetDirectoryName(fileName);
+        var fileExtension = Path.GetExtension(fileName);
+        switch (fileExtension) 
+        {
+            case ".zip":
+                return ExtractZipFile(fileName, fileFolder);
+            case ".7z":
+                return Extract7zFile(fileName, fileFolder);
+            case ".rar":
+                return ExtractRarFile(fileName, fileFolder);
+            default:
+                return false;
+            
+        }
+        
+    }
+
+    private static bool ExtractRarFile(string fileName, string destination)
+    {
+        throw new NotImplementedException();
+    }
+
+    private static bool Extract7zFile(string fileName, string destination)
+    {
+        throw new NotImplementedException();
+    }
+
+    private static bool ExtractZipFile(string fileName, string destination)
+    {
+        ZipFile.ExtractToDirectory(fileName, destination);
+        return true;
+    }
+    
+    
 }

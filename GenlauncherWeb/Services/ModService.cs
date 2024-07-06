@@ -5,6 +5,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using ElectronNET.API.Entities;
@@ -178,15 +179,36 @@ public class ModService
         }
         else
         {
+            var modDir = Path.Combine(_steamService.GetModDir(), cleanedModName);
+            modDir.CreateFolderIfIsNotExist();
+            byte[] fileBytes;
+            MediaTypeHeaderValue fileMimeType;
             using (var client = new HttpClient())
             {
                 var link = actualMod.ModData.SimpleDownloadLink.ParseDownloadLink();
                 var result = await client.GetAsync(link);
+                fileBytes = await result.Content.ReadAsByteArrayAsync();
                 if (result.IsSuccessStatusCode)
                 {
                     Console.WriteLine("Download complete!");
                 }
+
+                fileMimeType = result.Content.Headers.ContentType;
             }
+
+            var fileExtension = fileMimeType.ToString().GetFileExtensionFromMimeType();
+            var fileName = Path.Combine(modDir, cleanedModName + fileExtension);
+            File.WriteAllBytes(fileName, fileBytes);
+            // Extract the file
+            
+            
+            
+            
+            installedFiles.Add(cleanedModName);
+            totalInstallSize = (ulong)fileBytes.Length;
+            _modInstallInfo[cleanedModName].Downloaded = true;
+            _modInstallInfo[cleanedModName].DownloadedFiles = installedFiles;
+            _modInstallInfo[cleanedModName].DownloadedSize = totalInstallSize;
         }
 
         lock (_lock)
