@@ -15,23 +15,33 @@ public class SymLinkService
             // - Administrator privileges, or
             // - Developer mode enabled on Windows 10 and above
             string tempFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            Console.WriteLine("Checking if symlinks are supported: " + tempFile);
             string symlink = tempFile + "_symlink";
+            Console.WriteLine("Symlink file: " + symlink);
             try
             {
                 // Attempt to create a symlink
                 File.Create(tempFile).Dispose();
-                CreateSymbolicLink(symlink, tempFile, 0);
+                
+                File.CreateSymbolicLink(symlink, tempFile);
+                if (File.Exists(symlink))
+                {
+                    return true;
+                }
+                
                 bool success = File.Exists(symlink);
                 File.Delete(tempFile);
                 if (success)
                 {
                     File.Delete(symlink);
                 }
-
+                Console.WriteLine("Symlinks are supported: " + success);
                 return success;
             }
-            catch
+            catch (Exception e)
             {
+                Console.WriteLine("Symlinks are not supported");
+                Console.WriteLine(e.ToString());
                 return false;
             }
         }
@@ -78,14 +88,21 @@ public class SymLinkService
     {
         if (IsSymlinksSupported())
         {
+            Console.WriteLine("Creating symlink: " + linkFile + " -> " + sourceFile);
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
+                File.CreateSymbolicLink(linkFile, sourceFile);
+                if (File.Exists(linkFile))
+                {
+                    return true;
+                }
+
                 return CreateSymbolicLink(linkFile, sourceFile, 0);
             }
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                return UnixCreateSymbolicLink(linkFile, sourceFile );
+                return UnixCreateSymbolicLink(linkFile, sourceFile);
             }
         }
 
@@ -108,8 +125,9 @@ public class SymLinkService
             {
                 return false;
             }
-
         }
+
+        Path.GetDirectoryName(linkFile).CreateFolderIfItDoesNotExist();
         File.CreateSymbolicLink(linkFile, sourceFile);
         if (File.Exists(sourceFile))
         {

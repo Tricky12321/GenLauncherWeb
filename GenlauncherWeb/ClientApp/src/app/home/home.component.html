@@ -17,7 +17,7 @@
       <td><img class="mod-image" [src]="mod.modData.uiImageSourceLink"></td>
       <td>{{ mod.modInfo.modName }}</td>
       <td>
-        {{ mod.downloaded ? mod.downloadedVersion : "Not installed" }}<br>
+        {{ mod.downloaded ? mod.downloadedVersion : "Not downloaded" }}<br>
         <small *ngIf="!mod.downloaded">({{ mod.modData.version }})</small>
       </td>
       <td [attr.data-sort]="mod.totalSize">
@@ -30,7 +30,12 @@
           <button class="btn btn-sm btn-success me-1" [disabled]="this.lockButtons" (click)="downloadMod(mod.modInfo.modName)" *ngIf="!mod.downloaded">Download</button>
           <button class="btn btn-sm btn-outline-danger me-1" [disabled]="this.lockButtons" (click)="removeMod(mod.modInfo.modName)" *ngIf="!mod.downloaded">Remove</button>
           <button class="btn btn-sm btn-danger me-1" [disabled]="this.lockButtons" (click)="uninstallMod(mod.modInfo.modName)" *ngIf="mod.downloaded && mod.installed">Uninstall</button>
-          <button class="btn btn-sm btn-success me-1" [disabled]="this.lockButtons" (click)="installMod(mod.modInfo.modName)" *ngIf="mod.downloaded && !mod.installed">Install mod</button>
+          <button class="btn btn-sm btn-success me-1"
+                  [disabled]="this.lockButtons || anyModInstalled()"
+                  (click)="installMod(mod.modInfo.modName)"
+                  *ngIf="mod.downloaded && !mod.installed"
+                  [ngbTooltip]="anyModInstalled() ? 'Only 1 mod may be installed at a time' : ''"
+          >Install mod</button>
           <button class="btn btn-sm btn-danger me-1" [disabled]="this.lockButtons" (click)="deleteMod(mod.modInfo.modName)" *ngIf="mod.downloaded && !mod.installed">Delete files</button>
         </ng-container>
         <ng-container *ngIf="this.downloadingMod == mod && this.downloadProgress != null && mod.downloading">

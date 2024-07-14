@@ -74,7 +74,7 @@ export class HomeComponent implements OnInit {
     var mod = this.addedMods.find(x => x.modInfo.modName == modName);
     mod.uninstalling = true;
     this.generalService.uninstallMod(modName).subscribe(success => {
-      this.load();
+      location.reload();
     })
   }
 
@@ -93,7 +93,7 @@ export class HomeComponent implements OnInit {
   installMod(modName: string) {
     this.lockButtons = true;
     this.generalService.installMod(modName).subscribe(success => {
-      this.load();
+      location.reload();
     })
   }
 
@@ -105,5 +105,9 @@ export class HomeComponent implements OnInit {
       this.load();
     })
 
+  }
+
+  anyModInstalled() {
+    return this.addedMods.filter(x => x.installed).length > 0;
   }
 }

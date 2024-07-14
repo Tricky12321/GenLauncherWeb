@@ -28,7 +28,6 @@ public class ModService
     private readonly OptionsService _optionsService;
     private const string ModListFile = "genlauncher_modlist.json";
     public const string BackupOriginalGameFilesDir = "OriginalGameFiles";
-    public readonly string ModdedGameExeHash;
     public readonly string ModdedGameExeDownloadLink;
     public readonly string GenToolDllHash;
     public readonly string GentoolDownloadLink;
@@ -39,7 +38,6 @@ public class ModService
         _steamService = steamService;
         _s3StorageService = s3StorageService;
         _optionsService = optionsService;
-        ModdedGameExeHash = configuration["Extra:ModdedGameExeHash"];
         ModdedGameExeDownloadLink = configuration["Extra:ModdedExeDownloadLink"];
         GenToolDllHash = configuration["Extra:GentoolDllHash"];
         GentoolDownloadLink = configuration["Extra:GentoolDownloadLink"];
@@ -74,7 +72,9 @@ public class ModService
         var filePath = _steamService.GetModDir();
         var jsonFile = Path.Combine(filePath, ModListFile);
         var json = JsonConvert.SerializeObject(_addedModList);
+        Console.WriteLine("Updating mod list file: " + jsonFile);
         File.WriteAllText(jsonFile, json);
+        Console.WriteLine("Mod list file updated");
     }
 
     private void ReadModListFile()
@@ -82,14 +82,20 @@ public class ModService
         lock (_lock)
         {
             var filePath = _steamService.GetModDir();
+            filePath.CreateFolderIfItDoesNotExist();
             var jsonFile = Path.Combine(filePath, ModListFile);
+            Console.WriteLine("Checking if mod list file exists");
+            Console.WriteLine(jsonFile);
             if (File.Exists(jsonFile))
             {
+                Console.WriteLine("Mod list file exists");
                 _addedModList = JsonConvert.DeserializeObject<List<Mod>>(File.ReadAllText(jsonFile));
             }
             else
             {
+                Console.WriteLine("Mod list file does not exist");
                 _addedModList = new List<Mod>();
+                Console.WriteLine("Creating mod file");
                 UpdateModListFile();
             }
         }
@@ -127,10 +133,12 @@ public class ModService
         var installedFiles = new List<string>();
         var cleanedModName = actualMod.ModInfo.ModName.CleanString();
         ulong totalInstallSize = 0;
+        Console.Write("Downloading " + cleanedModName + "...");
         if (actualMod.HasS3Storage())
         {
+            Console.WriteLine("Using S3 storage...");
             var modDir = Path.Combine(_steamService.GetModDir(), cleanedModName);
-            modDir.CreateFolderIfIsNotExist();
+            modDir.CreateFolderIfItDoesNotExist();
             var fileList = _s3StorageService.GetModFiles(actualMod);
             ulong totalSize = 0;
             fileList.ForEach(x => { totalSize += x.Size; });
@@ -156,7 +164,7 @@ public class ModService
                     File.Delete(filePath);
                 }
 
-                Path.GetDirectoryName(filePath).CreateFolderIfIsNotExist();
+                Path.GetDirectoryName(filePath).CreateFolderIfItDoesNotExist();
                 var fileBytes = await _s3StorageService.DownloadS3File(file.FileName, actualMod);
                 await File.WriteAllBytesAsync(filePath, fileBytes);
                 // Check the hash of the file
@@ -179,10 +187,12 @@ public class ModService
         }
         else
         {
+            Console.WriteLine("Using simple download method...");
             var modDir = Path.Combine(_steamService.GetModDir(), cleanedModName);
-            modDir.CreateFolderIfIsNotExist();
+            modDir.CreateFolderIfItDoesNotExist();
             byte[] fileBytes;
             MediaTypeHeaderValue fileMimeType;
+            _modInstallInfo[cleanedModName] = new ModDownloadProgress();
             using (var client = new HttpClient())
             {
                 var link = actualMod.ModData.SimpleDownloadLink.ParseDownloadLink();
@@ -200,12 +210,12 @@ public class ModService
             var fileName = Path.Combine(modDir, cleanedModName + fileExtension);
             File.WriteAllBytes(fileName, fileBytes);
             // Extract the file
-            
-            
-            
-            
-            installedFiles.Add(cleanedModName);
-            totalInstallSize = (ulong)fileBytes.Length;
+
+            fileName.ExtractFile();
+            Console.WriteLine("Extract complete! (destination: " + modDir + ")");
+            Console.WriteLine("Scanning for files");
+            installedFiles = Extensions.GetAllFilesRecursively(modDir);
+            totalInstallSize = (ulong)Extensions.GetTotalSizeInBytes(installedFiles);
             _modInstallInfo[cleanedModName].Downloaded = true;
             _modInstallInfo[cleanedModName].DownloadedFiles = installedFiles;
             _modInstallInfo[cleanedModName].DownloadedSize = totalInstallSize;
@@ -241,23 +251,22 @@ public class ModService
         lock (_lock)
         {
             var mod = _addedModList.First(x => x.ModInfo.ModName == modName);
-            if (mod.Installed)
+            var gameFolder = _steamService.GetGameInstallDir();
+            foreach (var modFile in mod.DownloadedFiles)
             {
-                var gameFolder = _steamService.GetGameInstallDir();
-                foreach (var modFile in mod.DownloadedFiles)
+                var gameFilePath = Path.Combine(gameFolder, modFile);
+                // Attempt to restore an original game file, if it exists
+                // If the file cannot be restored, which would indicate it is not a original game file, delete it
+                if (!RestoreOriginalGameFile(modFile) && File.Exists(gameFilePath))
                 {
-                    var gameFilePath = Path.Combine(gameFolder, modFile);
-                    // Attempt to restore an original game file, if it exists
-                    // If the file cannot be restored, which would indicate it is not a original game file, delete it
-                    if (!RestoreOriginalGameFile(modFile) && File.Exists(gameFilePath))
-                    {
-                        File.Delete(gameFilePath);
-                    }
+                    Console.WriteLine("No file to restore, deleting " + gameFilePath);
+                    File.Delete(gameFilePath);
                 }
-
-                mod.Installed = false;
-                UpdateModListFile();
             }
+
+            mod.Installed = false;
+            Console.WriteLine("Uninstalled " + mod.ModInfo.ModName + " successfully!");
+            UpdateModListFile();
         }
     }
 
@@ -290,15 +299,34 @@ public class ModService
                 switch (options.InstallMethod)
                 {
                     case InstallMethod.CopyFiles:
+                        Console.WriteLine("Copying file: " + sourceFile + " to: " + gameFilePath);
                         File.Copy(sourceFile, gameFilePath, true);
                         break;
                     case InstallMethod.SymLink:
-                        SymLinkService.CreateSymbolicLink(gameFilePath,sourceFile);
+                        SymLinkService.CreateSymbolicLink(gameFilePath, sourceFile);
                         break;
                 }
             }
 
+            Console.WriteLine("Verify mod files are installed correctly...");
+            foreach (var modFile in mod.DownloadedFiles)
+            {
+                var gameFilePath = Path.Combine(gameFolder, modFile);
+                if (!File.Exists(gameFilePath))
+                {
+                    mod.Installed = false;
+                    UninstallMod(modName);
+                    throw new Exception("Failed to install mod. File: " + gameFilePath + " does not exist");
+                }
+                else
+                {
+                    Console.WriteLine("Modfile: " + gameFilePath + " installed");
+                }
+            }
+
+
             mod.Installed = true;
+            Console.WriteLine("Mod " + modName + " is now installed!");
             UpdateModListFile();
             EnsureModdedLauncherInstalled();
         }
@@ -313,14 +341,15 @@ public class ModService
         var gameDir = _steamService.GetGameInstallDir();
         var modDir = _steamService.GetModDir();
         var backupFolder = Path.Combine(modDir, BackupOriginalGameFilesDir);
-        backupFolder.CreateFolderIfIsNotExist();
+        backupFolder.CreateFolderIfItDoesNotExist();
+        Console.WriteLine("Backing up original game file: " + filename + " to: " + backupFolder);
 
         var gameFile = Path.Combine(gameDir, filename);
         var destination = Path.Combine(backupFolder, filename);
 
         if (File.Exists(gameFile))
         {
-            Path.GetDirectoryName(destination).CreateFolderIfIsNotExist();
+            Path.GetDirectoryName(destination).CreateFolderIfItDoesNotExist();
             File.Move(gameFile, destination, true);
         }
     }
@@ -342,6 +371,7 @@ public class ModService
         var backupFile = Path.Combine(backupFolder, filename);
         if (File.Exists(backupFile))
         {
+            Console.WriteLine("Restoring original game file: " + filename);
             File.Move(backupFile, currentGameFile, true);
             return true;
         }
@@ -412,11 +442,12 @@ public class ModService
     public bool CheckModdedLauncherInstalled()
     {
         var gamePath = _steamService.GetGameInstallDir();
+        var modDir = Path.Combine(_steamService.GetModDir(), "Mo");
         var gameExe = Path.Combine(gamePath, "Generals.exe");
         if (File.Exists(gameExe))
         {
-            var md5Hash = gameExe.GetMd5HashOfFile();
-            if (md5Hash == ModdedGameExeHash)
+            var moddedExeFile = Path.Combine(_steamService.GetModDir(), "ModdedLauncher", "modded.exe");
+            if (File.Exists(moddedExeFile) && gameExe.GetMd5HashOfFile() == moddedExeFile.GetMd5HashOfFile())
             {
                 return true;
             }
@@ -442,52 +473,54 @@ public class ModService
             var gameExe = Path.Combine(gamePath, "Generals.exe");
             if (File.Exists(gameExe))
             {
-                var md5Hash = gameExe.GetMd5HashOfFile();
-                if (md5Hash == ModdedGameExeHash)
+                Console.WriteLine("Game exe already exists, checking if it is already modded");
+                var moddedExeFile = Path.Combine(_steamService.GetModDir(), "ModdedLauncher", "modded.exe");
+                if (File.Exists(moddedExeFile))
                 {
-                    return true;
+                    if (gameExe.GetMd5HashOfFile() == moddedExeFile.GetMd5HashOfFile())
+                    {
+                        Console.WriteLine("Game exe is already modded");
+                        return true;
+                    }
+                    BackupOriginalGameFile("Generals.exe");
                 }
                 else
                 {
-                    BackupOriginalGameFile("Generals.exe");
-                    DownloadModdedExe();
-                    InstallModdedLauncher();
-                    return true;
+                    Console.WriteLine("Modded exe does not exist");
                 }
             }
-            else
-            {
-                DownloadModdedExe();
-                InstallModdedLauncher();
-                return true;
-            }
+
+            DownloadModdedExe();
+            InstallModdedLauncher();
+            return true;
         }
         catch (Exception e)
         {
             throw new Exception("Unknown error, failed to installed modded launcher, mods will not work without it.\n" + e.ToString());
         }
-
-        return false;
     }
 
     private void InstallModdedLauncher()
     {
         var gamePath = _steamService.GetGameInstallDir();
         var gameExe = Path.Combine(gamePath, "Generals.exe");
-        var modFolder = _steamService.GetModDir();
-        var moddedExeFolder = Path.Combine(modFolder, "ModdedLauncher");
-        moddedExeFolder.CreateFolderIfIsNotExist();
+        var moddedExeFolder = Path.Combine(_steamService.GetModDir(), "ModdedLauncher");
+        moddedExeFolder.CreateFolderIfItDoesNotExist();
         var moddedExeFile = Path.Combine(moddedExeFolder, "modded.exe");
+        if (File.Exists(gameExe))
+        {
+            BackupOriginalGameFile("Generals.exe");
+        }
         if (File.Exists(moddedExeFile))
         {
             var options = _optionsService.GetOptions();
             switch (options.InstallMethod)
             {
                 case InstallMethod.CopyFiles:
-                    File.Copy(moddedExeFile, gameExe, false);
+                    File.Copy(moddedExeFile, gameExe);
                     break;
                 case InstallMethod.SymLink:
-                    SymLinkService.CreateSymbolicLink(moddedExeFile, gameExe);
+                    SymLinkService.CreateSymbolicLink(gameExe, moddedExeFile);
                     break;
             }
         }
@@ -496,14 +529,16 @@ public class ModService
     private void DownloadModdedExe()
     {
         var modFolder = _steamService.GetModDir();
+
         var moddedExeFolder = Path.Combine(modFolder, "ModdedLauncher");
-        moddedExeFolder.CreateFolderIfIsNotExist();
+        moddedExeFolder.CreateFolderIfItDoesNotExist();
         var moddedExeFile = Path.Combine(moddedExeFolder, "modded.exe");
         if (Directory.Exists(moddedExeFolder) && File.Exists(moddedExeFile))
         {
             return;
         }
 
+        Console.WriteLine("Downloading modded launcher");
         // Now download the modded.exe file from GitHub
         using (var client = new HttpClient())
         {
@@ -592,6 +627,7 @@ public class ModService
             switch (options.InstallMethod)
             {
                 case InstallMethod.CopyFiles:
+                    Console.WriteLine("Copying d3d8.dll from " + genToolFolder + " to " + gameDir);
                     File.Copy(d3d8Dll, Path.Combine(gameDir, "d3d8.dll"), false);
                     break;
                 case InstallMethod.SymLink:
@@ -605,7 +641,7 @@ public class ModService
     {
         var modDir = _steamService.GetModDir();
         var genToolFolder = Path.Combine(modDir, "GenTool");
-        genToolFolder.CreateFolderIfIsNotExist();
+        genToolFolder.CreateFolderIfItDoesNotExist();
         var genToolFile = Path.Combine(genToolFolder, "d3d8.dll");
         if (Directory.Exists(genToolFolder) && File.Exists(genToolFile))
         {
@@ -623,6 +659,4 @@ public class ModService
             File.Delete(filePath);
         }
     }
-
-
 }

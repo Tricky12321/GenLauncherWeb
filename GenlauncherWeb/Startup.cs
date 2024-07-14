@@ -108,7 +108,7 @@ namespace GenLauncherWeb
                 Fullscreen = false,
             };
 
-            BrowserWindow mainWindow = await Electron.WindowManager.CreateWindowAsync(options, "http://localhost:8002");
+            BrowserWindow mainWindow = await Electron.WindowManager.CreateWindowAsync(options, "http://localhost:8001");
             mainWindow.OnReadyToShow += () => { mainWindow.Show(); };
             mainWindow.SetTitle("GenLauncher");
             MenuItem[] menu = new MenuItem[]

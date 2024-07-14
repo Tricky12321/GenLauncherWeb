@@ -52,17 +52,20 @@ electronize build /target ["win" | "osx" | "linux"] /electron-arch ["ia32" | "x6
 
 
 # Before a first release, the following need to be solved/implemented:
-- [ ] Implement base install method using symbolic links
-- [ ] Implement base install method using copy/move (for non symlink systems)
+- [x] Implement base install method using symbolic links
+- [x] Implement base install method using copy/move (for non symlink systems)
 - [ ] Implement install for Generals
-- [ ] Implement install for Zero Hour
+- [x] Implement install for Zero Hour
 - [ ] Implement a way to detect games (Both ZH and Gen)
 - [x] Implement a way to download from S3
-- [ ] Implement a way to download from Onedrive
-- [ ] Implement a way to download from Dropbox
+- [x] Implement a way to download from Onedrive
+- [x] Implement a way to download from Dropbox
 
 ## Optional nice-to-have
 - [ ] Language translations
+- [ ] Implement actual download percentage
+- [ ] Show download speed
+- [ ] Able to change steam game launch options
 
 
 # Credit

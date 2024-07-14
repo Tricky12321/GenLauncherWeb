@@ -7,16 +7,18 @@
       <label class="form-check-label" for="installMethod-symlink">
         Symlink files (recommended)
       </label>
-      <i class="fa fa-circle-info ms-2" ngbTooltip="Symlinks are not supported on this system" *ngIf="!this.isSymlinksSupported"></i>
+      <i class="fa fa-circle-info ms-2" ngbTooltip="Symlinks are not supported on this system, if on windows, try to run GenlauncherWeb as Administrator" *ngIf="!this.isSymlinksSupported"></i>
     </div>
     <div class="form-check">
       <input class="form-check-input" type="radio" name="installMethod" [value]="InstallMethod.CopyFiles" id="installMethod-copy" [checked]="launcherOptions.installMethod === InstallMethod.CopyFiles"
              (change)="updateInstallMethod($event)">
       <label class="form-check-label" for="installMethod-copy">
-        Copy files
+        Copy files <i class="fa fa-circle-exclamation text-danger" ngbTooltip="Using 'Copy files' is much slower and will cause extra wear to your disk!
+        Use only if symlinks is not an option"></i>
       </label>
+
+
     </div>
-    <small>Changing this will reinstall any installed mods</small>
   </div>
 </div>
 

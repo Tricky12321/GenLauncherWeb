@@ -9,6 +9,9 @@ using System.Text;
 using System.Text.RegularExpressions;
 using GenLauncherWeb.Models;
 using HtmlAgilityPack;
+using SevenZipExtractor;
+using SharpCompress.Archives;
+using SharpCompress.Archives.Rar;
 using YamlDotNet.Serialization;
 
 namespace GenLauncherWeb;
@@ -87,7 +90,7 @@ public static class Extensions
         return cleaned;
     }
 
-    public static bool CreateFolderIfIsNotExist(this string path)
+    public static bool CreateFolderIfItDoesNotExist(this string path)
     {
         if (!Directory.Exists(path))
         {
@@ -206,36 +209,142 @@ public static class Extensions
     {
         var fileFolder = Path.GetDirectoryName(fileName);
         var fileExtension = Path.GetExtension(fileName);
-        switch (fileExtension) 
+        switch (fileExtension)
         {
             case ".zip":
-                return ExtractZipFile(fileName, fileFolder);
+                return ExtractZipFile(fileName, fileFolder, true);
             case ".7z":
-                return Extract7zFile(fileName, fileFolder);
+                return Extract7zFile(fileName, fileFolder, true);
             case ".rar":
-                return ExtractRarFile(fileName, fileFolder);
+                return ExtractRarFile(fileName, fileFolder, true);
             default:
                 return false;
-            
+        }
+    }
+
+    private static bool ExtractRarFile(string fileName, string destination, bool deleteFile)
+    {
+        
+        using (RarArchive archive = RarArchive.Open(fileName))
+        {
+            foreach (RarArchiveEntry entry in archive.Entries)
+            {
+                if (!entry.IsDirectory)
+                {
+                    string filePath = Path.Combine(destination, entry.Key);
+                    Console.WriteLine($"Extracting: {entry.Key}");
+
+                    Path.GetDirectoryName(filePath).CreateFolderIfItDoesNotExist();
+                    // Extract the file
+                    entry.WriteToFile(filePath);
+                    if (!File.Exists(filePath))
+                    {
+                        return false;
+                    }
+                }
+            }
         }
         
+        if (deleteFile)
+        {
+            File.Delete(fileName);
+        }
+
+        return true;
     }
 
-    private static bool ExtractRarFile(string fileName, string destination)
+    private static bool Extract7zFile(string fileName, string destination, bool deleteFile)
     {
-        throw new NotImplementedException();
+        using (ArchiveFile archiveFile = new ArchiveFile(fileName))
+        {
+            foreach (Entry entry in archiveFile.Entries)
+            {
+                // Extract each entry to the specified directory
+                entry.Extract(destination);
+                Console.WriteLine($"7z: Extracted: {entry.FileName}");
+                var extractedFilePath = Path.Combine(destination, entry.FileName);
+                if (!File.Exists(extractedFilePath))
+                {
+                    return false;
+                }
+            }
+        }
+
+        if (deleteFile)
+        {
+            File.Delete(fileName);
+        }
+
+        return true;
     }
 
-    private static bool Extract7zFile(string fileName, string destination)
-    {
-        throw new NotImplementedException();
-    }
-
-    private static bool ExtractZipFile(string fileName, string destination)
+    private static bool ExtractZipFile(string fileName, string destination, bool deleteFile)
     {
         ZipFile.ExtractToDirectory(fileName, destination);
+        if (deleteFile)
+        {
+            File.Delete(fileName);
+        }
+
         return true;
     }
     
+    public static List<string> GetAllFilesRecursively(string path)
+    {
+        List<string> files = new List<string>();
+        
+        try
+        {
+            // Get all files in the directory and subdirectories
+            files.AddRange(Directory.GetFiles(path, "*.*", SearchOption.AllDirectories));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+        return files;
+    }
     
+    public static long GetTotalSizeInBytes(List<string> filePaths)
+    {
+        long totalSize = 0;
+
+        foreach (string filePath in filePaths)
+        {
+            try
+            {
+                if (File.Exists(filePath))
+                {
+                    FileInfo fileInfo = new FileInfo(filePath);
+                    totalSize += fileInfo.Length;
+                }
+                else
+                {
+                    Console.WriteLine($"File not found: {filePath}");
+                }
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Console.WriteLine($"Error accessing file {filePath}: {ex.Message}");
+            }
+            catch (FileNotFoundException ex)
+            {
+                Console.WriteLine($"File not found: {filePath} - {ex.Message}");
+            }
+            catch (IOException ex)
+            {
+                Console.WriteLine($"Error reading file {filePath}: {ex.Message}");
+            }
+        }
+
+        return totalSize;
+    }
 }

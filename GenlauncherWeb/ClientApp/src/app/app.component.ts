@@ -51,7 +51,7 @@ export class AppComponent implements OnInit {
   }
 
   getModsButtonText() {
-    return window.location.pathname == '/add-mod' ? 'Installed mods' : 'Install mods';
+    return window.location.pathname == '/add-mod' ? 'Added mods' : 'Add mods';
   }
 
   showOptions() {
