@@ -26,29 +26,31 @@
     "@angular/platform-browser-dynamic": "16.2.12",
     "@angular/router": "16.2.12",
     "@ng-bootstrap/ng-bootstrap": "15.1.2",
+    "@popperjs/core": "2.11.8",
     "angular-datatables": "15.0.1",
+    "bootstrap": "5.2.3",
     "datatables.net": "1.13.8",
     "datatables.net-bs5": "1.13.8",
-    "@popperjs/core": "2.11.8",
-    "bootstrap": "5.2.3",
+    "electron": "^15.3.1",
+    "electron-builder": "^23.3.3",
+    "jquery": "3.6.3",
+    "jquery-ui-dist": "1.13.2",
     "ngx-toastr": "17.0.2",
     "rxjs": "7.8.1",
     "tslib": "2.3.1",
     "typescript": "4.9.3",
-    "zone.js": "0.13.3",
-    "jquery": "3.6.3",
-    "jquery-ui-dist": "1.13.2"
+    "zone.js": "0.13.3"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "16.2.12",
     "@angular/cli": "16.2.12",
     "@angular/compiler-cli": "16.2.12",
     "@angular/language-service": "16.2.12",
-    "@types/jquery": "3.5.16",
-    "@types/node": "20.11.0",
+    "@types/datatables.net": "1.10.24",
     "@types/jasmine": "4.3.1",
     "@types/jasminewd2": "2.0.10",
-    "@types/datatables.net": "1.10.24",
+    "@types/jquery": "3.5.16",
+    "@types/node": "20.11.0",
     "jasmine-core": "4.5.0",
     "jasmine-spec-reporter": "7.0.0",
     "karma": "6.4.1",
@@ -60,7 +62,7 @@
     "webpack-bundle-analyzer": "4.7.0"
   },
   "optionalDependencies": {
+    "eslint": "8.56.0",
     "ts-node": "10.9.2",
-    "eslint": "8.56.0"
   }
 }
