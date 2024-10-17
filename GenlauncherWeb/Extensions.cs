@@ -347,4 +347,13 @@ public static class Extensions
 
         return totalSize;
     }
+
+    public static string FixModFileName(this string modName)
+    {
+        if (modName.EndsWith(".gib"))
+        {
+            modName = modName.Replace(".gib", ".big");
+        }
+        return modName;
+    }
 }

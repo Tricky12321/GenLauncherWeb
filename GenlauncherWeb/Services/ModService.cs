@@ -254,7 +254,8 @@ public class ModService
             var gameFolder = _steamService.GetGameInstallDir();
             foreach (var modFile in mod.DownloadedFiles)
             {
-                var gameFilePath = Path.Combine(gameFolder, modFile);
+                var modFileName = modFile.FixModFileName();
+                var gameFilePath = Path.Combine(gameFolder, modFileName);
                 // Attempt to restore an original game file, if it exists
                 // If the file cannot be restored, which would indicate it is not a original game file, delete it
                 if (!RestoreOriginalGameFile(modFile) && File.Exists(gameFilePath))
@@ -288,7 +289,9 @@ public class ModService
             var modFolder = mod.ModDir;
             foreach (var modFile in mod.DownloadedFiles)
             {
-                var gameFilePath = Path.Combine(gameFolder, modFile);
+                var modFileName = modFile.FixModFileName();
+                
+                var gameFilePath = Path.Combine(gameFolder, modFileName);
                 if (File.Exists(gameFilePath))
                 {
                     BackupOriginalGameFile(gameFilePath);
@@ -311,7 +314,8 @@ public class ModService
             Console.WriteLine("Verify mod files are installed correctly...");
             foreach (var modFile in mod.DownloadedFiles)
             {
-                var gameFilePath = Path.Combine(gameFolder, modFile);
+                var modFileName = modFile.FixModFileName();
+                var gameFilePath = Path.Combine(gameFolder, modFileName);
                 if (!File.Exists(gameFilePath))
                 {
                     mod.Installed = false;
