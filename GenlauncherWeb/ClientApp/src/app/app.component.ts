@@ -13,6 +13,7 @@ import {InstallationStatus} from "../models/InstallationStatus";
 export class AppComponent implements OnInit {
   public installationStatus: InstallationStatus | null = null;
   public installingGenTool: boolean = false;
+
   constructor(private gameService: GameService, private generalService: GeneralService, private toastrService: ToastrService, public router: Router) {
 
   }
@@ -72,5 +73,9 @@ export class AppComponent implements OnInit {
     this.generalService.installGenTool().subscribe(success => {
       location.reload();
     });
+  }
+
+  showCredits() {
+    this.router.navigate(['credits']);
   }
 }

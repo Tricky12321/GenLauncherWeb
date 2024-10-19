@@ -63,7 +63,7 @@ electronize build /target ["win" | "osx" | "linux"] /electron-arch ["ia32" | "x6
 
 ## Optional nice-to-have
 - [ ] Language translations
-- [ ] Implement actual download percentage
+- [x] Implement actual download percentage
 - [ ] Show download speed
 - [ ] Able to change steam game launch options
 

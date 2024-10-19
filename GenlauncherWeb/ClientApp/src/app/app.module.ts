@@ -13,6 +13,7 @@ import {NgbTooltip} from "@ng-bootstrap/ng-bootstrap";
 import {ByteToMbPipe} from "../pipes/ByteToMb.pipe";
 import {ByteToGbPipe} from "../pipes/ByteToGb.pipe";
 import {OptionsComponent} from "./options/options.component";
+import {CreditsComponent} from "./credits/credits.component";
 
 @NgModule({
   declarations: [
@@ -20,6 +21,7 @@ import {OptionsComponent} from "./options/options.component";
     HomeComponent,
     AddModComponent,
     OptionsComponent,
+    CreditsComponent
   ],
   imports: [
     BrowserModule,
@@ -31,6 +33,7 @@ import {OptionsComponent} from "./options/options.component";
         {path: '', component: HomeComponent, pathMatch: 'full'},
       {path: 'add-mod', component: AddModComponent, pathMatch: 'full'},
       {path: 'options', component: OptionsComponent, pathMatch: 'full'},
+      {path: 'credits', component: CreditsComponent, pathMatch: 'full'},
       ],
     ),
     DataTablesModule,
