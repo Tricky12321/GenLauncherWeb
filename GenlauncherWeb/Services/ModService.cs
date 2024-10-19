@@ -84,18 +84,13 @@ public class ModService
             var filePath = _steamService.GetModDir();
             filePath.CreateFolderIfItDoesNotExist();
             var jsonFile = Path.Combine(filePath, ModListFile);
-            Console.WriteLine("Checking if mod list file exists");
-            Console.WriteLine(jsonFile);
             if (File.Exists(jsonFile))
             {
-                Console.WriteLine("Mod list file exists");
                 _addedModList = JsonConvert.DeserializeObject<List<Mod>>(File.ReadAllText(jsonFile));
             }
             else
             {
-                Console.WriteLine("Mod list file does not exist");
                 _addedModList = new List<Mod>();
-                Console.WriteLine("Creating mod file");
                 UpdateModListFile();
             }
         }
@@ -179,7 +174,7 @@ public class ModService
                 }
                 else
                 {
-                    if (!filePath.ToLower().Contains("changelog"))
+                    if (!filePath.ToLower().Contains("changelog") && Path.GetExtension(filePath).ToLower() != ".txt")
                     {
                         throw new Exception("Hash did not match, file failed to install " + file.FileName);
                     }
@@ -222,7 +217,7 @@ public class ModService
                         {
                             // Write to the file (or memory stream)
                             await fileStream.WriteAsync(buffer, 0, readBytes);
-                
+
                             // Update the downloaded bytes
                             bytesDownloaded += (ulong)readBytes;
 
@@ -281,8 +276,8 @@ public class ModService
         };
         _modInstallInfo.TryAdd(cleanedModName.StandardModName(), downloadProgress);
     }
-    
-    public void CreateBaseDownloadProgress(string modname, ulong totalSize,ulong currentDownload = 0)
+
+    public void CreateBaseDownloadProgress(string modname, ulong totalSize, ulong currentDownload = 0)
     {
         var standardModname = modname.StandardModName();
         ModDownloadProgress downloadProgress = new ModDownloadProgress()
@@ -347,7 +342,7 @@ public class ModService
             foreach (var modFile in mod.DownloadedFiles)
             {
                 var modFileName = modFile.FixModFileName();
-                
+
                 var gameFilePath = Path.Combine(gameFolder, modFileName);
                 if (File.Exists(gameFilePath))
                 {
@@ -544,6 +539,7 @@ public class ModService
                         Console.WriteLine("Game exe is already modded");
                         return true;
                     }
+
                     BackupOriginalGameFile("Generals.exe");
                 }
                 else
@@ -573,6 +569,7 @@ public class ModService
         {
             BackupOriginalGameFile("Generals.exe");
         }
+
         if (File.Exists(moddedExeFile))
         {
             var options = _optionsService.GetOptions();
