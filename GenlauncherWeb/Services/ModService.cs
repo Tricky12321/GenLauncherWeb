@@ -152,8 +152,8 @@ public class ModService
                     var fileHash = filePath.GetMd5HashOfFile();
                     if (fileHash == file.Hash)
                     {
-                        _modInstallInfo[cleanedModName].DownloadedFiles.Add(file.FileName);
-                        _modInstallInfo[cleanedModName].DownloadedSize += file.Size;
+                        _modInstallInfo[cleanedModName.StandardModName()].DownloadedFiles.Add(file.FileName);
+                        _modInstallInfo[cleanedModName.StandardModName()].DownloadedSize += file.Size;
                         totalInstallSize += file.Size;
                         Console.WriteLine("Hash matched for file " + file.FileName + " of size " + file.Size + ". It is already installed.");
                         // Files match, no need to redownload
@@ -173,17 +173,20 @@ public class ModService
                 {
                     Console.WriteLine("Hash matched for file " + file.FileName + " of size " + file.Size);
                     installedFiles.Add(file.FileName);
-                    _modInstallInfo[cleanedModName].DownloadedFiles.Add(file.FileName);
+                    _modInstallInfo[cleanedModName.StandardModName()].DownloadedFiles.Add(file.FileName);
                     totalInstallSize += file.Size;
-                    _modInstallInfo[cleanedModName].DownloadedSize += file.Size;
+                    _modInstallInfo[cleanedModName.StandardModName()].DownloadedSize += file.Size;
                 }
                 else
                 {
-                    throw new Exception("Hash did not match, file failed to install " + file.FileName);
+                    if (!filePath.ToLower().Contains("changelog"))
+                    {
+                        throw new Exception("Hash did not match, file failed to install " + file.FileName);
+                    }
                 }
             }
 
-            _modInstallInfo[cleanedModName].Downloaded = true;
+            _modInstallInfo[cleanedModName.StandardModName()].Downloaded = true;
         }
         else
         {
@@ -196,14 +199,47 @@ public class ModService
             using (var client = new HttpClient())
             {
                 var link = actualMod.ModData.SimpleDownloadLink.ParseDownloadLink();
-                var result = await client.GetAsync(link);
-                fileBytes = await result.Content.ReadAsByteArrayAsync();
-                if (result.IsSuccessStatusCode)
+
+                // Get the response message and ensure success status code
+                var response = await client.GetAsync(link, HttpCompletionOption.ResponseHeadersRead);
+                response.EnsureSuccessStatusCode();
+
+                // Get total file size from the content headers
+                var totalSize = response.Content.Headers.ContentLength ?? -1L;
+
+                // Set up buffers
+                byte[] buffer = new byte[8192]; // 8KB buffer size
+                ulong bytesDownloaded = 0;
+
+                // Open response stream
+                using (var contentStream = await response.Content.ReadAsStreamAsync())
                 {
-                    Console.WriteLine("Download complete!");
+                    // Create memory stream or file stream to store downloaded data
+                    using (var fileStream = new MemoryStream()) // Or FileStream if saving to a file
+                    {
+                        int readBytes;
+                        while ((readBytes = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                        {
+                            // Write to the file (or memory stream)
+                            await fileStream.WriteAsync(buffer, 0, readBytes);
+                
+                            // Update the downloaded bytes
+                            bytesDownloaded += (ulong)readBytes;
+
+                            // Call the progress update method
+                            CreateBaseDownloadProgress(modName, (ulong)totalSize, bytesDownloaded);
+
+                            // Optional: Add a delay if you want to reduce update frequency (not necessary in most cases)
+                            // await Task.Delay(500); 
+                        }
+
+                        // Once done, retrieve the final file bytes
+                        fileBytes = fileStream.ToArray();
+                    }
                 }
 
-                fileMimeType = result.Content.Headers.ContentType;
+                fileMimeType = response.Content.Headers.ContentType;
+                Console.WriteLine("Download complete!");
             }
 
             var fileExtension = fileMimeType.ToString().GetFileExtensionFromMimeType();
@@ -216,9 +252,9 @@ public class ModService
             Console.WriteLine("Scanning for files");
             installedFiles = Extensions.GetAllFilesRecursively(modDir);
             totalInstallSize = (ulong)Extensions.GetTotalSizeInBytes(installedFiles);
-            _modInstallInfo[cleanedModName].Downloaded = true;
-            _modInstallInfo[cleanedModName].DownloadedFiles = installedFiles;
-            _modInstallInfo[cleanedModName].DownloadedSize = totalInstallSize;
+            _modInstallInfo[cleanedModName.StandardModName()].Downloaded = true;
+            _modInstallInfo[cleanedModName.StandardModName()].DownloadedFiles = installedFiles;
+            _modInstallInfo[cleanedModName.StandardModName()].DownloadedSize = totalInstallSize;
         }
 
         lock (_lock)
@@ -243,7 +279,28 @@ public class ModService
             DownloadedSize = 0,
             Downloaded = false
         };
-        _modInstallInfo.TryAdd(cleanedModName, downloadProgress);
+        _modInstallInfo.TryAdd(cleanedModName.StandardModName(), downloadProgress);
+    }
+    
+    public void CreateBaseDownloadProgress(string modname, ulong totalSize,ulong currentDownload = 0)
+    {
+        var standardModname = modname.StandardModName();
+        ModDownloadProgress downloadProgress = new ModDownloadProgress()
+        {
+            TotalDownloadSize = totalSize,
+            FileList = new List<string>(),
+            DownloadedFiles = new List<string>(),
+            DownloadedSize = currentDownload,
+            Downloaded = totalSize == currentDownload
+        };
+        if (_modInstallInfo.ContainsKey(standardModname))
+        {
+            _modInstallInfo[standardModname] = downloadProgress;
+        }
+        else
+        {
+            _modInstallInfo.TryAdd(standardModname, downloadProgress);
+        }
     }
 
     public void UninstallMod(string modName)
@@ -396,15 +453,16 @@ public class ModService
 
     public ModDownloadProgress GetModDownloadProgress(string modName)
     {
-        if (_modInstallInfo.ContainsKey(modName))
+        var standardModName = modName.StandardModName();
+        if (_modInstallInfo.ContainsKey(standardModName))
         {
-            if (_modInstallInfo[modName].Downloaded)
+            if (_modInstallInfo[standardModName].Downloaded)
             {
-                _modInstallInfo.Remove(modName, out var modProgress);
+                _modInstallInfo.Remove(standardModName, out var modProgress);
                 return modProgress;
             }
 
-            return _modInstallInfo[modName];
+            return _modInstallInfo[standardModName];
         }
         else
         {

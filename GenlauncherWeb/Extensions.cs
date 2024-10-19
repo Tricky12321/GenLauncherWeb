@@ -356,4 +356,10 @@ public static class Extensions
         }
         return modName;
     }
+    
+    public static string StandardModName(this string modName)
+    {
+        // remove all special characters and spaces and make it lowercase
+        return Regex.Replace(modName, @"[^a-zA-Z0-9]", "").ToLower();
+    }
 }
