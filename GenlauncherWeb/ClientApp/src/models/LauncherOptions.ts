@@ -1,6 +1,7 @@
 export class LauncherOptions {
 
   public installMethod: InstallMethod;
+  public steamPath: string;
 }
 
 export enum InstallMethod {

@@ -27,7 +27,6 @@ namespace GenLauncherWeb
             services.AddScoped<SteamService>();
             services.AddScoped<RepoService>();
             services.AddScoped<S3StorageService>();
-            services.AddScoped<FileService>();
             services.AddScoped<ModService>();
             services.AddScoped<OptionsService>();
             services.AddElectron();

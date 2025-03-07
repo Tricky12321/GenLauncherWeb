@@ -1,12 +1,11 @@
-
 <div class="container-xl page-container">
   <div class="row">
-    <div class="col-10">
+    <div class="col-8">
       <div class="row">
         <div class="col">
           <div class="row">
             <div class="col-2" *ngIf="!isOnOptionsPage()">
-              <button class="btn btn-outline-primary" (click)="toggleModsView()">{{getModsButtonText()}}</button>
+              <button class="btn btn-outline-primary" (click)="toggleModsView()">{{ getModsButtonText() }}</button>
             </div>
             <div class="col-2" *ngIf="isOnOptionsPage()">
               <button class="btn btn-primary" (click)="goHome()">Return</button>
@@ -26,7 +25,7 @@
         </div>
       </div>
     </div>
-    <div class="col-2">
+    <div class="col-4">
       <div class="row">
         <div class="col">
           <button class="btn btn-outline-primary full-width" (click)="startGame()">Launch Game</button>
@@ -67,7 +66,9 @@
             </td>
           </tr>
           <tr>
-            <td>Modded Launcher</td>
+            <td>
+              Modded Launcher
+            </td>
             <td>
               <i *ngIf="this.installationStatus == null" class="fa fa-spin fa-spinner"></i>
               <i *ngIf="this.installationStatus != null && this.installationStatus.moddedLauncher" class="fa fa-check text-success"></i>
@@ -78,8 +79,19 @@
         </table>
       </div>
       <div class="row">
-        <div class="col">
-          <p>{{this.steamPath}}</p>
+        <div class="col-3">
+          <span>Config:</span>
+        </div>
+        <div class="col-9">
+          <span>{{ this.configPath }}</span>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-3">
+          <span>Steam:</span>
+        </div>
+        <div class="col-9">
+          <span>{{ this.steamPath }}</span>
         </div>
       </div>
     </div>

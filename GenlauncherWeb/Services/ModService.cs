@@ -303,7 +303,7 @@ public class ModService
         lock (_lock)
         {
             var mod = _addedModList.First(x => x.ModInfo.ModName == modName);
-            var gameFolder = _steamService.GetGameInstallDir();
+            var gameFolder = SteamService.GetGameInstallDir();
             foreach (var modFile in mod.DownloadedFiles)
             {
                 var modFileName = modFile.FixModFileName();
@@ -336,7 +336,7 @@ public class ModService
                 throw new Exception("There is already another mod installed. Please uninstall it first.");
             }
 
-            var gameFolder = _steamService.GetGameInstallDir();
+            var gameFolder = SteamService.GetGameInstallDir();
             var modDir = _steamService.GetModDir();
             var modFolder = mod.ModDir;
             foreach (var modFile in mod.DownloadedFiles)
@@ -394,7 +394,7 @@ public class ModService
     /// <param name="filename"></param>
     public void BackupOriginalGameFile(string filename)
     {
-        var gameDir = _steamService.GetGameInstallDir();
+        var gameDir = SteamService.GetGameInstallDir();
         var modDir = _steamService.GetModDir();
         var backupFolder = Path.Combine(modDir, BackupOriginalGameFilesDir);
         backupFolder.CreateFolderIfItDoesNotExist();
@@ -419,7 +419,7 @@ public class ModService
     /// <returns></returns>
     public bool RestoreOriginalGameFile(string filename)
     {
-        var gameDir = _steamService.GetGameInstallDir();
+        var gameDir = SteamService.GetGameInstallDir();
         var modDir = _steamService.GetModDir();
         var backupFolder = Path.Combine(modDir, BackupOriginalGameFilesDir);
 
@@ -498,7 +498,7 @@ public class ModService
 
     public bool CheckModdedLauncherInstalled()
     {
-        var gamePath = _steamService.GetGameInstallDir();
+        var gamePath = SteamService.GetGameInstallDir();
         var modDir = Path.Combine(_steamService.GetModDir(), "Mo");
         var gameExe = Path.Combine(gamePath, "Generals.exe");
         if (File.Exists(gameExe))
@@ -525,7 +525,7 @@ public class ModService
 
         try
         {
-            var gamePath = _steamService.GetGameInstallDir();
+            var gamePath = SteamService.GetGameInstallDir();
             var modDir = _steamService.GetModDir();
             var gameExe = Path.Combine(gamePath, "Generals.exe");
             if (File.Exists(gameExe))
@@ -560,7 +560,7 @@ public class ModService
 
     private void InstallModdedLauncher()
     {
-        var gamePath = _steamService.GetGameInstallDir();
+        var gamePath = SteamService.GetGameInstallDir();
         var gameExe = Path.Combine(gamePath, "Generals.exe");
         var moddedExeFolder = Path.Combine(_steamService.GetModDir(), "ModdedLauncher");
         moddedExeFolder.CreateFolderIfItDoesNotExist();
@@ -639,8 +639,8 @@ public class ModService
 
     public bool CheckGenToolInstalled()
     {
-        _steamService.GetGameInstallDir();
-        var gentoolDll = Path.Combine(_steamService.GetGameInstallDir(), "d3d8.dll");
+        SteamService.GetGameInstallDir();
+        var gentoolDll = Path.Combine(SteamService.GetGameInstallDir(), "d3d8.dll");
         if (!File.Exists(gentoolDll))
         {
             return false;
@@ -657,8 +657,8 @@ public class ModService
 
     public bool EnsureGenToolInstalled()
     {
-        _steamService.GetGameInstallDir();
-        var originalDll = Path.Combine(_steamService.GetGameInstallDir(), "d3d8.dll");
+        SteamService.GetGameInstallDir();
+        var originalDll = Path.Combine(SteamService.GetGameInstallDir(), "d3d8.dll");
         if (File.Exists(originalDll))
         {
             var currentDllHash = originalDll.GetMd5HashOfFile();
@@ -676,7 +676,7 @@ public class ModService
 
     private void InstallGenTool()
     {
-        var gameDir = _steamService.GetGameInstallDir();
+        var gameDir = SteamService.GetGameInstallDir();
         var modDir = _steamService.GetModDir();
         var genToolFolder = Path.Combine(modDir, "GenTool");
         var d3d8Dll = Extensions.FindFileRecursively(genToolFolder, "d3d8.dll");

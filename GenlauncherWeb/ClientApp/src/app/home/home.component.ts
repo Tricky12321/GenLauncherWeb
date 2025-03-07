@@ -3,6 +3,7 @@ import {Router} from "@angular/router";
 import {GeneralService} from "../../services/general.service";
 import {Mod} from "../../models/Mod";
 import {ModDownloadProgress} from "../../models/ModDownloadProgress";
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-home',
@@ -12,7 +13,7 @@ import {ModDownloadProgress} from "../../models/ModDownloadProgress";
 export class HomeComponent implements OnInit {
   public downloadProgress: ModDownloadProgress | null = null;
 
-  constructor(public router: Router, public generalService: GeneralService) {
+  constructor(public router: Router, public generalService: GeneralService, public toastrService: ToastrService) {
 
   }
 
@@ -31,15 +32,24 @@ export class HomeComponent implements OnInit {
 
   load() {
     this.addedMods = null;
-    this.generalService.getAddedMods().subscribe(success => {
-      success.map(x => {
-        x.downloading = false;
-        x.deleting = false;
-        x.uninstalling = false;
-      });
-      this.addedMods = success;
-      this.lockButtons = false;
+    this.generalService.checkSteamPath().subscribe( {
+      next: () => {
+        this.generalService.getAddedMods().subscribe(success => {
+          success.map(x => {
+            x.downloading = false;
+            x.deleting = false;
+            x.uninstalling = false;
+          });
+          this.addedMods = success;
+          this.lockButtons = false;
+        });
+      },
+      error: () => {
+        this.toastrService.error('Steam path not found.', 'Error');
+      }
     });
+
+
   }
 
   downloadMod(modName: string) {
