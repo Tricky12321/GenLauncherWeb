@@ -28,10 +28,11 @@ First all the following requirements are needed
 ## Running the application
 
 1. Run `dotnet restore` in the root of the folder
-2. Install npm packages
-   1. Go to the `GenlauncherWeb/ClientApp` folder and run `npm install`
-3. Build the project from your favorite IDE ([JetBrains - Rider](https://www.jetbrains.com/rider/), [Visual Studio](https://visualstudio.microsoft.com/), [Visual Studio Code](https://code.visualstudio.com/))
-4. This will run a webserver with the same layout and functionality as in the electron app on `http://localhost:8002` [Link](http://localhost:8002)
+2. Install `yarn` by installing it using npm `npm install -g yarn`
+3. Install npm packages
+   1. Go to the `GenlauncherWeb/ClientApp` folder and run `yarn install`
+4. Build the project from your favorite IDE ([JetBrains - Rider](https://www.jetbrains.com/rider/), [Visual Studio](https://visualstudio.microsoft.com/), [Visual Studio Code](https://code.visualstudio.com/))
+5. This will run a webserver with the same layout and functionality as in the electron app on `http://localhost:8002` [Link](http://localhost:8002)
 
 
 # Coding standards
