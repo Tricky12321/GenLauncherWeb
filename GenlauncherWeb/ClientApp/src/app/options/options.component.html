@@ -1,30 +1,39 @@
-<div class="row pt-2" *ngIf="!this.loading">
-  <div class="form-group border-1">
-    <label>Install method</label>
-    <div class="form-check">
-      <input class="form-check-input" type="radio" name="installMethod" [value]="InstallMethod.SymLink" id="installMethod-symlink" [checked]="launcherOptions.installMethod === InstallMethod.SymLink"
-             (change)="updateInstallMethod($event)" [disabled]="!this.isSymlinksSupported">
-      <label class="form-check-label" for="installMethod-symlink">
-        Symlink files (recommended)
-      </label>
-      <i class="fa fa-circle-info ms-2" ngbTooltip="Symlinks are not supported on this system, if on windows, try to run GenlauncherWeb as Administrator" *ngIf="!this.isSymlinksSupported"></i>
-    </div>
-    <div class="form-check">
-      <input class="form-check-input" type="radio" name="installMethod" [value]="InstallMethod.CopyFiles" id="installMethod-copy" [checked]="launcherOptions.installMethod === InstallMethod.CopyFiles"
-             (change)="updateInstallMethod($event)">
-      <label class="form-check-label" for="installMethod-copy">
-        Copy files <i class="fa fa-circle-exclamation text-danger" ngbTooltip="Using 'Copy files' is much slower and will cause extra wear to your disk!
+<ng-container *ngIf="!this.loading">
+  <div class="row pt-2">
+    <div class="form-group border-1">
+      <label>Install method</label>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="installMethod" [value]="InstallMethod.SymLink" id="installMethod-symlink" [checked]="launcherOptions.installMethod === InstallMethod.SymLink"
+               (change)="updateInstallMethod($event)" [disabled]="!this.isSymlinksSupported">
+        <label class="form-check-label" for="installMethod-symlink">
+          Symlink files (recommended)
+        </label>
+        <i class="fa fa-circle-info ms-2" ngbTooltip="Symlinks are not supported on this system, if on windows, try to run GenlauncherWeb as Administrator" *ngIf="!this.isSymlinksSupported"></i>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="installMethod" [value]="InstallMethod.CopyFiles" id="installMethod-copy"
+               [checked]="launcherOptions.installMethod === InstallMethod.CopyFiles"
+               (change)="updateInstallMethod($event)">
+        <label class="form-check-label" for="installMethod-copy">
+          Copy files <i class="fa fa-circle-exclamation text-danger" ngbTooltip="Using 'Copy files' is much slower and will cause extra wear to your disk!
         Use only if symlinks is not an option"></i>
-      </label>
-
-
+        </label>
+      </div>
     </div>
   </div>
-</div>
-
+  <div class="row pt-2 pb-2">
+    <div class="form-group border-1">
+      <label for="steamPathLabel">Steam common folder</label>
+      <input type="text" id="steamPathLabel" class="form-control" [(ngModel)]="launcherOptions.steamPath">
+    </div>
+  </div>
 <div class="row">
   <div class="col">
     <button class="btn btn-danger me-2" (click)="resetOptions()">Reset</button>
     <button class="btn btn-success me-2" (click)="saveOptions()">Save options</button>
   </div>
+</div>
+</ng-container>
+<div class="container" *ngIf="this.loading">
+  <i class="fa fa-spin fa-spinner justify-content-center loading"></i>
 </div>

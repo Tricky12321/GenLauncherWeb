@@ -13,8 +13,8 @@ export class GeneralService {
 
   }
 
-  getSteamPath() {
-    return this.http.get<{steamInstallPath: string}>('/api/general/steamInstallPath');
+  getPaths() {
+    return this.http.get<{steamInstallPath: string, configPath: string}>('/api/general/paths');
   }
 
   getModList() {
@@ -63,5 +63,9 @@ export class GeneralService {
 
   installGenTool() {
     return this.http.get('/api/general/installGenTool');
+  }
+
+  checkSteamPath() {
+    return this.http.get('/api/general/checkSteamPath');
   }
 }

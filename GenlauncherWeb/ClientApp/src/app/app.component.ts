@@ -19,6 +19,7 @@ export class AppComponent implements OnInit {
   }
 
   public steamPath: string;
+  public configPath: string;
   public homePage: boolean = true;
 
   startGame() {
@@ -32,9 +33,9 @@ export class AppComponent implements OnInit {
   }
 
   load() {
-    this.generalService.getSteamPath().subscribe(result => {
-      console.log("Steam path: " + result.steamInstallPath);
+    this.generalService.getPaths().subscribe(result => {
       this.steamPath = result.steamInstallPath;
+      this.configPath = result.configPath;
     })
 
     this.generalService.getInstallationStatus().subscribe(success => {

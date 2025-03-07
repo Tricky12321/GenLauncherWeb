@@ -7,17 +7,18 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using GenLauncherWeb.Enums;
 using Microsoft.Extensions.DependencyInjection;
+using ZstdSharp.Unsafe;
 
 namespace GenLauncherWeb.Services;
 
 public class SteamService
 {
-    public string GetSteamInstallPath()
+    public static string GetSteamInstallPath()
     {
         string zeroHourGameId = "2732960";
         string platform = DetectPlatform();
         string steamPath = "";
-
+        
         if (platform == "Windows")
         {
             steamPath = @"C:\Program Files (x86)\Steam"; // Default Steam path
@@ -31,12 +32,16 @@ public class SteamService
             steamPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".steam", "steam");
             if (!Directory.Exists(steamPath))
             {
-                steamPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share", "Steam");
+                // Check if the flatpak location exists
+                if (Directory.Exists("~/.var/app/com.valvesoftware.Steam/data/Steam/"))
+                {
+                    steamPath = "~/.var/app/com.valvesoftware.Steam/data/Steam/";
+                }
             }
         }
         else
         {
-            throw new PlatformNotSupportedException("Unsupported platform");
+            throw new PlatformNotSupportedException("Unsupported platform, please enter your steam path manually.");
         }
 
         string libraryFoldersPath = Path.Combine(steamPath, "steamapps", "libraryfolders.vdf");
@@ -61,7 +66,7 @@ public class SteamService
         throw new Exception("Game not found.");
     }
     
-    private List<string> GetLibraryPaths(string libraryFoldersPath)
+    private static List<string> GetLibraryPaths(string libraryFoldersPath)
     {
         var libraryPaths = new List<string>();
         var regex = new Regex(@"\""path\""\s+\""(.*?)\""", RegexOptions.Compiled);
@@ -99,29 +104,29 @@ public class SteamService
         }
     }
 
-    public string GetGeneralsInstallDir(string steamInstallPath)
+    public static string GetGeneralsInstallDir(string steamInstallPath)
     {
         string generalInstallDir = Path.Combine(steamInstallPath, "Command and Conquer Generals");
         return generalInstallDir;
     }
-    public string GetGeneralsInstallDir()
+    public static string GetGeneralsInstallDir()
     {
         var steamInstallPath = GetSteamInstallPath();
         return GetGeneralsInstallDir(steamInstallPath);
     }
     
-    public string GetZeroHourInstallDir(string steamInstallPath)
+    public static string GetZeroHourInstallDir(string steamInstallPath)
     {
         string generalInstallDir = Path.Combine(steamInstallPath, "Command & Conquer Generals - Zero Hour");
         return generalInstallDir;
     }
-    public string GetZeroHourInstallDir()
+    public static string GetZeroHourInstallDir()
     {
         var steamInstallPath = GetSteamInstallPath();
         return GetZeroHourInstallDir(steamInstallPath);
     }
 
-    public string GetGameInstallDir()
+    public static string GetGameInstallDir()
     {
         return GetGame() == GameType.ZH ? GetZeroHourInstallDir() : GetGeneralsInstallDir();
     }
