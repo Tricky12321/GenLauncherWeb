@@ -5,9 +5,10 @@ import {ReposModsData} from "../../models/ReposModsData";
 import {ToastrService} from "ngx-toastr";
 
 @Component({
-  selector: 'add-mod',
-  templateUrl: './add-mod.component.html',
-  styleUrls: ['./add-mod.component.css']
+    selector: 'add-mod',
+    templateUrl: './add-mod.component.html',
+    styleUrls: ['./add-mod.component.css'],
+    standalone: false
 })
 export class AddModComponent implements OnInit {
   dtOptions: DataTables.Settings = {

@@ -8,9 +8,10 @@ import {InstallMethod, LauncherOptions} from "../../models/LauncherOptions";
 import {ToastrService} from "ngx-toastr";
 
 @Component({
-  selector: 'credits',
-  templateUrl: './credits.component.html',
-  styleUrls: ['./credits.component.css']
+    selector: 'credits',
+    templateUrl: './credits.component.html',
+    styleUrls: ['./credits.component.css'],
+    standalone: false
 })
 export class CreditsComponent implements OnInit {
   constructor(public router: Router, public generalService: GeneralService, public optionsService: OptionsService, public toastrService: ToastrService) {

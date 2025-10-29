@@ -6,9 +6,10 @@ import {ModDownloadProgress} from "../../models/ModDownloadProgress";
 import { ToastrService } from 'ngx-toastr';
 
 @Component({
-  selector: 'app-home',
-  templateUrl: './home.component.html',
-  styleUrls: ['./home.component.css']
+    selector: 'app-home',
+    templateUrl: './home.component.html',
+    styleUrls: ['./home.component.css'],
+    standalone: false
 })
 export class HomeComponent implements OnInit {
   public downloadProgress: ModDownloadProgress | null = null;

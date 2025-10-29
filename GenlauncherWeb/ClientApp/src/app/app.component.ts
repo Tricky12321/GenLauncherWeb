@@ -6,9 +6,10 @@ import {Router} from "@angular/router";
 import {InstallationStatus} from "../models/InstallationStatus";
 
 @Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
+    selector: 'app-root',
+    templateUrl: './app.component.html',
+    styleUrls: ['./app.component.css'],
+    standalone: false
 })
 export class AppComponent implements OnInit {
   public installationStatus: InstallationStatus | null = null;

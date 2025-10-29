@@ -8,9 +8,10 @@ import {InstallMethod, LauncherOptions} from "../../models/LauncherOptions";
 import {ToastrService} from "ngx-toastr";
 
 @Component({
-  selector: 'options',
-  templateUrl: './options.component.html',
-  styleUrls: ['./options.component.css']
+    selector: 'options',
+    templateUrl: './options.component.html',
+    styleUrls: ['./options.component.css'],
+    standalone: false
 })
 export class OptionsComponent implements OnInit {
   public launcherOptions: LauncherOptions;
