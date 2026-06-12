@@ -1,11 +1,9 @@
 import {Component, OnInit} from '@angular/core';
-import {Router} from "@angular/router";
 import {GeneralService} from "../../services/general.service";
-import {Mod} from "../../models/Mod";
-import {ModDownloadProgress} from "../../models/ModDownloadProgress";
 import {OptionsService} from "../../services/options.service";
 import {InstallMethod, LauncherOptions} from "../../models/LauncherOptions";
 import {ToastrService} from "ngx-toastr";
+import {errorMessage} from "../util";
 
 @Component({
     selector: 'options',
@@ -18,10 +16,10 @@ export class OptionsComponent implements OnInit {
   public isSymlinksSupported: boolean = false;
   public loading: boolean = true;
 
-  constructor(public router: Router, public generalService: GeneralService, public optionsService: OptionsService, public toastrService: ToastrService) {
+  protected readonly InstallMethod = InstallMethod;
 
+  constructor(public generalService: GeneralService, public optionsService: OptionsService, public toastrService: ToastrService) {
   }
-
 
   ngOnInit(): void {
     this.load();
@@ -29,36 +27,54 @@ export class OptionsComponent implements OnInit {
 
   load() {
     this.loading = true;
-    this.optionsService.getOptions().subscribe(success => {
-      this.launcherOptions = success;
-      this.loading = false;
-    })
-    this.optionsService.getIsSymLinksSupported().subscribe(success => {
-      this.isSymlinksSupported = success.symlinkSupported;
+    this.optionsService.getOptions().subscribe({
+      next: options => {
+        this.launcherOptions = options;
+        this.loading = false;
+      },
+      error: err => {
+        this.loading = false;
+        this.toastrService.error(errorMessage(err), 'Could not load options');
+      }
+    });
+    this.optionsService.getIsSymLinksSupported().subscribe({
+      next: result => this.isSymlinksSupported = result.symlinkSupported,
+      error: () => this.isSymlinksSupported = false
     });
   }
 
-  protected readonly InstallMethod = InstallMethod;
-
   resetOptions() {
     this.loading = true;
-    this.optionsService.resetOptions().subscribe(success => {
-      this.loading = false;
-      this.launcherOptions = success;
-    })
+    this.optionsService.resetOptions().subscribe({
+      next: options => {
+        this.loading = false;
+        this.launcherOptions = options;
+        this.toastrService.success('Options reset to defaults');
+      },
+      error: err => {
+        this.loading = false;
+        this.toastrService.error(errorMessage(err), 'Reset failed');
+      }
+    });
   }
 
   saveOptions() {
     this.loading = true;
-    this.optionsService.setOptions(this.launcherOptions).subscribe(success => {
-      this.loading = false;
-      this.toastrService.success("Options saved");
-      this.launcherOptions = success;
-    })
+    this.optionsService.setOptions(this.launcherOptions).subscribe({
+      next: options => {
+        this.loading = false;
+        this.launcherOptions = options;
+        this.toastrService.success('Options saved');
+      },
+      error: err => {
+        this.loading = false;
+        this.toastrService.error(errorMessage(err), 'Save failed');
+      }
+    });
   }
 
   updateInstallMethod(event: Event) {
-    var target = event.target as HTMLInputElement;
+    const target = event.target as HTMLInputElement;
     this.launcherOptions.installMethod = target.value == "1" ? InstallMethod.SymLink : InstallMethod.CopyFiles;
   }
 }

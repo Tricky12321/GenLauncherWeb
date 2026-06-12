@@ -231,3 +231,6 @@ _Pvt_Extensions
 .fake/
 .vscode
 .idea
+.claude
+.codegraph
+docs

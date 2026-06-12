@@ -114,17 +114,6 @@ public static class Extensions
         }
     }
 
-    public static bool UninstallMod(this Mod mod)
-    {
-        Directory.Delete(mod.ModDir, true);
-        mod.ModDir = "";
-        mod.TotalSize = 0;
-        mod.DownloadedFiles = new List<string>();
-        mod.DownloadedVersion = "";
-        mod.Installed = false;
-        return true;
-    }
-
     public static string EscapeLinuxPath(this string path)
     {
         var escapedPath = new StringBuilder();

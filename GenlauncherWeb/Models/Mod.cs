@@ -1,11 +1,13 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.IO;
+using GenLauncherWeb.Enums;
 
 namespace GenLauncherWeb.Models;
 
 public class Mod
 {
+    public GameType Game { get; set; }
     public bool Installed { get; set; }
     public bool Installing { get; set; }
     public bool Downloading { get; set; }

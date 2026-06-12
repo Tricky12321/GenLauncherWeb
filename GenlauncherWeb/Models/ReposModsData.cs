@@ -1,9 +1,13 @@
 ﻿using System.Collections.Generic;
+using GenLauncherWeb.Enums;
 
 namespace GenLauncherWeb.Models;
 
 public class ReposModsData
 {
+    /// <summary>Which game this repo data belongs to (not part of the YAML; set by the backend).</summary>
+    public GameType Game { get; set; }
+
     public string LauncherVersion { get; set; }
     public string DownloadLink { get; set; }
     public string VulkanReposData { get; set; }
@@ -24,6 +28,15 @@ public class ModAddonsAndPatches
     public List<string> ModPatches { get; set; }
 
     public List<string> ModAddons { get; set; }
+
+    /// <summary>Set by the backend for the browse list; not part of the repo YAML.</summary>
+    public bool Added { get; set; }
+
+    /// <summary>Set by the backend for the browse list; not part of the repo YAML.</summary>
+    public bool Downloaded { get; set; }
+
+    /// <summary>Set by the backend for the browse list; not part of the repo YAML.</summary>
+    public bool Installed { get; set; }
 
     public ModAddonsAndPatches()
     {

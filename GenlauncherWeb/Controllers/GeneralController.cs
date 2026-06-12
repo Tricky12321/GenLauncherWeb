@@ -8,15 +8,11 @@ namespace GenLauncherWeb.Controllers;
 [Route("api/[controller]")]
 public class GeneralController : ControllerBase
 {
-    public readonly SteamService _steamService;
-    private readonly RepoService _repoService;
     private readonly ModService _modService;
     private readonly OptionsService _optionsService;
 
-    public GeneralController(SteamService steamService, RepoService repoService, ModService modService, OptionsService optionsService)
+    public GeneralController(ModService modService, OptionsService optionsService)
     {
-        _steamService = steamService;
-        _repoService = repoService;
         _modService = modService;
         _optionsService = optionsService;
     }
@@ -24,29 +20,34 @@ public class GeneralController : ControllerBase
     [HttpGet("modlist")]
     public IActionResult GetModList()
     {
-        var modList = _modService.GetUnAddedMods();
-        return Ok(modList);
+        return Ok(_modService.GetBrowseMods());
     }
 
     [HttpGet("paths")]
     public IActionResult GetPaths()
     {
-        var optionsSteamPath = _optionsService.GetOptions().SteamPath;
-        var applicationConfigFolder = OptionsService.GetApplicationDataFile();
-        SteamService.GetGeneralsInstallDir(optionsSteamPath);
         return Ok(new
         {
-            SteamInstallPath = optionsSteamPath,
-            ConfigPath = applicationConfigFolder
+            SteamInstallPath = _optionsService.GetOptions().SteamPath,
+            ConfigPath = OptionsService.GetApplicationDataFile()
         });
     }
 
+    [HttpGet("detectedGames")]
+    public IActionResult GetDetectedGames()
+    {
+        var options = _optionsService.GetOptions();
+        return Ok(new
+        {
+            DetectedGames = SteamService.DetectInstalledGames(options.SteamPath),
+            SelectedGame = options.SelectedGame
+        });
+    }
 
     [HttpGet("addedMods")]
     public IActionResult GetAddedMods()
     {
-        var addedMods = _modService.GetAddedMods();
-        return Ok(addedMods);
+        return Ok(_modService.GetAddedMods());
     }
 
     [HttpPost("removeMod")]
@@ -73,8 +74,7 @@ public class GeneralController : ControllerBase
     [HttpGet("getModDownloadProgress/{modName}")]
     public IActionResult GetModDownloadProgress(string modName)
     {
-        var modInstallInfo = _modService.GetModDownloadProgress(modName);
-        return Ok(modInstallInfo);
+        return Ok(_modService.GetModDownloadProgress(modName));
     }
 
     [HttpPost("uninstallMod")]
@@ -83,14 +83,6 @@ public class GeneralController : ControllerBase
         _modService.UninstallMod(modRequest.ModName);
         return Ok();
     }
-    /*
-    [HttpPost("selectMod")]
-    public IActionResult SelectMod([FromBody] ModRequest modRequest)
-    {
-        _modService.SelectMod(modRequest.ModName);
-        return Ok();
-    }
-    */
 
     [HttpPost("deleteMod")]
     public IActionResult DeleteMod([FromBody] ModRequest modRequest)
@@ -109,8 +101,7 @@ public class GeneralController : ControllerBase
     [HttpGet("GetInstallationStatus")]
     public IActionResult GetInstallationStatus()
     {
-        var status = _modService.GetInstallationStatus();
-        return Ok(status);
+        return Ok(_modService.GetInstallationStatus());
     }
 
     [HttpGet("installGenTool")]
@@ -123,7 +114,8 @@ public class GeneralController : ControllerBase
     [HttpGet("checkSteamPath")]
     public IActionResult CheckSteamPath()
     {
-        var steamPath = SteamService.GetSteamInstallPath();
+        var configuredPath = _optionsService.GetOptions().SteamPath;
+        var steamPath = string.IsNullOrEmpty(configuredPath) ? SteamService.GetSteamInstallPath() : configuredPath;
         return Ok(new { SteamPath = steamPath });
     }
 }
