@@ -38,6 +38,7 @@ namespace GenLauncherWeb
             services.AddSingleton<S3StorageService>();
             services.AddSingleton<ModService>();
             services.AddSingleton<OptionsService>();
+            services.AddSingleton<PatchService>();
             services.AddElectron();
             services.AddMvc(options => options.EnableEndpointRouting = false);
             services.AddControllers()

@@ -37,9 +37,18 @@
   <div class="option-panel">
     <h6 class="panel-title">Steam common folder</h6>
     <p class="text-secondary" style="font-size: 0.8rem">
-      The steamapps/common folder containing the game. Leave it to the auto-detected value unless the game is not found.
+      The <code>steamapps/common</code> folder containing the game. Leave it to the auto-detected value unless the game is not found.
     </p>
-    <input type="text" id="steamPathLabel" class="form-control" [(ngModel)]="launcherOptions.steamPath">
+    <div class="d-flex gap-2 align-items-center">
+      <input type="text" id="steamPathLabel" class="form-control" [(ngModel)]="launcherOptions.steamPath">
+      <button class="btn btn-outline-dim btn-sm text-nowrap" (click)="browseSteamFolder()"
+              ngbTooltip="Opens a folder picker (Electron only)">
+        <i class="fa fa-folder-open me-1"></i>Browse…
+      </button>
+    </div>
+    <p class="text-secondary mt-1" style="font-size: 0.75rem">
+      <i class="fa fa-circle-info me-1"></i>The Browse button opens a native folder picker in the desktop (Electron) app. In a browser, type the path directly.
+    </p>
   </div>
 
   <div class="d-flex gap-2">

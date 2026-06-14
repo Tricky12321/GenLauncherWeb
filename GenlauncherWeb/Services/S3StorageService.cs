@@ -25,6 +25,44 @@ public class S3StorageService
         _defaultSecretKey = configuration["Extra:DefaultS3SecretKey"];
     }
 
+    public List<ModificationFileInfo> GetFilesForModData(ModData modData)
+    {
+        var current = new CultureInfo("en-US");
+        current.DateTimeFormat = new DateTimeFormatInfo();
+        current.DateTimeFormat.Calendar = new GregorianCalendar();
+        Thread.CurrentThread.CurrentCulture = current;
+
+        MinioClient minioClient;
+        if (string.IsNullOrEmpty(modData.S3HostPublicKey) || string.IsNullOrEmpty(modData.S3HostSecretKey))
+            minioClient = new MinioClient(modData.S3HostLink, _defaultPublicKey, _defaultSecretKey);
+        else
+            minioClient = new MinioClient(modData.S3HostLink, modData.S3HostPublicKey, modData.S3HostSecretKey);
+
+        return GetFilesFromBucket(modData, minioClient);
+    }
+
+    public async Task DownloadS3FileToPathForModData(ModData modData, string filename, string destinationPath, Action<int> onChunk = null)
+    {
+        var downloadUrl = string.Format("https://{0}/{1}/{2}/{3}", modData.S3HostLink.Split(':')[0],
+            modData.S3BucketName, modData.S3FolderName, filename);
+
+        using var client = new HttpClient();
+        client.Timeout = TimeSpan.FromHours(2);
+        using var response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
+        if (!response.IsSuccessStatusCode)
+            throw new ApiException(502, "Failed to download file: " + filename);
+
+        await using var contentStream = await response.Content.ReadAsStreamAsync();
+        await using var fileStream = File.Create(destinationPath);
+        var buffer = new byte[81920];
+        int read;
+        while ((read = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+        {
+            await fileStream.WriteAsync(buffer, 0, read);
+            onChunk?.Invoke(read);
+        }
+    }
+
     public List<ModificationFileInfo> GetModFiles(Mod mod)
     {
         var current = new CultureInfo("en-US");

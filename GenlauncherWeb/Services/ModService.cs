@@ -510,6 +510,7 @@ public class ModService
     private void UninstallCore(GameType game, Mod mod)
     {
         var gameFolder = GetGameDir(game);
+
         foreach (var modFile in mod.DownloadedFiles ?? new List<string>())
         {
             var modFileName = modFile.FixModFileName();

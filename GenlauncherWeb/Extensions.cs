@@ -78,6 +78,15 @@ public static class Extensions
         return !string.IsNullOrEmpty(mod.ModData.S3HostLink) && !string.IsNullOrEmpty(mod.ModData.S3FolderName) && !string.IsNullOrEmpty(mod.ModData.S3BucketName);
     }
 
+    public static ModData DownloadModDataFromUrl(string url)
+    {
+        var yaml = DownloadYaml(url);
+        var deserializer = new DeserializerBuilder()
+            .IgnoreUnmatchedProperties()
+            .Build();
+        return deserializer.Deserialize<ModData>(yaml);
+    }
+
     public static string CleanString(this string input)
     {
         // Remove non-ASCII characters

@@ -1,4 +1,7 @@
+using System.Linq;
 using System.Threading.Tasks;
+using ElectronNET.API;
+using ElectronNET.API.Entities;
 using GenLauncherWeb.Models.RequestObjects;
 using GenLauncherWeb.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -111,6 +114,31 @@ public class GeneralController : ControllerBase
         return Ok();
     }
 
+    [HttpGet("browseSteamFolder")]
+    public async Task<IActionResult> BrowseSteamFolder()
+    {
+        if (!HybridSupport.IsElectronActive)
+        {
+            return Ok(new { available = false, path = (string)null });
+        }
+
+        var win = Electron.WindowManager.BrowserWindows.FirstOrDefault();
+        if (win == null)
+        {
+            return Ok(new { available = false, path = (string)null });
+        }
+
+        var dialogOptions = new OpenDialogOptions
+        {
+            Title = "Select steamapps/common folder",
+            Properties = new[] { OpenDialogProperty.openDirectory }
+        };
+
+        var paths = await Electron.Dialog.ShowOpenDialogAsync(win, dialogOptions);
+        var selected = paths?.FirstOrDefault();
+        return Ok(new { available = true, path = selected ?? (string)null });
+    }
+
     [HttpGet("checkSteamPath")]
     public IActionResult CheckSteamPath()
     {
@@ -118,4 +146,5 @@ public class GeneralController : ControllerBase
         var steamPath = string.IsNullOrEmpty(configuredPath) ? SteamService.GetSteamInstallPath() : configuredPath;
         return Ok(new { SteamPath = steamPath });
     }
+
 }

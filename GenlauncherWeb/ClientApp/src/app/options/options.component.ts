@@ -77,4 +77,15 @@ export class OptionsComponent implements OnInit {
     const target = event.target as HTMLInputElement;
     this.launcherOptions.installMethod = target.value == "1" ? InstallMethod.SymLink : InstallMethod.CopyFiles;
   }
+
+  browseSteamFolder() {
+    this.generalService.browseSteamFolder().subscribe({
+      next: result => {
+        if (result.available && result.path) {
+          this.launcherOptions.steamPath = result.path;
+        }
+      },
+      error: err => this.toastrService.error(errorMessage(err), 'Browse failed')
+    });
+  }
 }

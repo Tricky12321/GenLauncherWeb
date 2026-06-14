@@ -10,9 +10,7 @@ import {DetectedGames} from "../models/DetectedGames";
   providedIn: 'root',
 })
 export class GeneralService {
-  constructor(private http: HttpClient) {
-
-  }
+  constructor(private http: HttpClient) {}
 
   getPaths() {
     return this.http.get<{steamInstallPath: string, configPath: string}>('/api/general/paths');
@@ -27,7 +25,7 @@ export class GeneralService {
   }
 
   addMod(modName: string) {
-    return this.http.post('/api/general/addMod', {modName: modName} );
+    return this.http.post('/api/general/addMod', {modName});
   }
 
   getAddedMods() {
@@ -35,15 +33,15 @@ export class GeneralService {
   }
 
   removeMod(modName: string) {
-    return this.http.post('/api/general/removeMod',  {modName: modName});
+    return this.http.post('/api/general/removeMod', {modName});
   }
 
   downloadMod(modName: string) {
-    return this.http.post('/api/general/downloadMod',  {modName: modName});
+    return this.http.post('/api/general/downloadMod', {modName});
   }
 
   uninstallMod(modName: string) {
-    return this.http.post('/api/general/uninstallMod',  {modName: modName});
+    return this.http.post('/api/general/uninstallMod', {modName});
   }
 
   getModDownloadProgress(modName: string) {
@@ -51,11 +49,11 @@ export class GeneralService {
   }
 
   installMod(modName: string) {
-    return this.http.post('/api/general/installMod',  {modName: modName});
+    return this.http.post('/api/general/installMod', {modName});
   }
 
   deleteMod(modName: string) {
-    return this.http.post('/api/general/deleteMod',  {modName: modName});
+    return this.http.post('/api/general/deleteMod', {modName});
   }
 
   getInstallationStatus() {
@@ -68,5 +66,9 @@ export class GeneralService {
 
   checkSteamPath() {
     return this.http.get<{steamPath: string}>('/api/general/checkSteamPath');
+  }
+
+  browseSteamFolder() {
+    return this.http.get<{available: boolean, path: string | null}>('/api/general/browseSteamFolder');
   }
 }

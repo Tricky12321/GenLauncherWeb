@@ -14,6 +14,7 @@ import {ByteToMbPipe} from "../pipes/ByteToMb.pipe";
 import {ByteToGbPipe} from "../pipes/ByteToGb.pipe";
 import {OptionsComponent} from "./options/options.component";
 import {CreditsComponent} from "./credits/credits.component";
+import {PatchesComponent} from "./patches/patches.component";
 
 @NgModule({
   declarations: [
@@ -21,7 +22,8 @@ import {CreditsComponent} from "./credits/credits.component";
     HomeComponent,
     AddModComponent,
     OptionsComponent,
-    CreditsComponent
+    CreditsComponent,
+    PatchesComponent
   ],
   imports: [
     BrowserModule,
@@ -35,6 +37,7 @@ import {CreditsComponent} from "./credits/credits.component";
     RouterModule.forRoot([
         {path: '', component: HomeComponent, pathMatch: 'full'},
         {path: 'add-mod', component: AddModComponent, pathMatch: 'full'},
+        {path: 'patches', component: PatchesComponent, pathMatch: 'full'},
         {path: 'options', component: OptionsComponent, pathMatch: 'full'},
         {path: 'credits', component: CreditsComponent, pathMatch: 'full'},
       ],
