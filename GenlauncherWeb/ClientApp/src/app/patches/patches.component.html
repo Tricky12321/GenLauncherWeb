@@ -1,0 +1,91 @@
+<div class="page-header">
+  <h2><i class="fa fa-bandage"></i>Game Patches</h2>
+</div>
+
+<p class="text-secondary mb-3" style="font-size: 0.85rem">
+  Game patches modify core game files independently of any mod. Multiple patches can be installed simultaneously.
+</p>
+
+<!-- Loading -->
+<ng-container *ngIf="loading">
+  <div class="skeleton-card"></div>
+  <div class="skeleton-card"></div>
+</ng-container>
+
+<!-- Empty -->
+<div class="empty-state" *ngIf="!loading && patches != null && patches.length === 0">
+  <i class="fa fa-box-open"></i>
+  <p class="mb-0">No patches are available for the selected game.</p>
+</div>
+
+<!-- Patch cards -->
+<div class="mod-card" *ngFor="let patch of patches" [class.installed]="patch.installed">
+
+  <!-- Art / image -->
+  <div class="mod-art">
+    <img *ngIf="patch.uiImageSourceLink && !patch.imgFailed"
+         [src]="patch.uiImageSourceLink"
+         (error)="patch.imgFailed = true"
+         alt="{{ patch.name }}">
+    <span class="mod-art-placeholder" *ngIf="!patch.uiImageSourceLink || patch.imgFailed">{{ patch.name }}</span>
+  </div>
+
+  <!-- Info -->
+  <div class="mod-body">
+    <div class="mod-name">
+      <span class="mod-name-text">{{ patch.name }}</span>
+    </div>
+    <div class="mod-meta">
+      <span *ngIf="patch.version"><i class="fa fa-code-branch"></i>v{{ patch.version }}</span>
+      <span *ngIf="patch.downloaded && patch.totalSize > 0"><i class="fa fa-hard-drive"></i>{{ patch.totalSize | byteToGb: 1 }}</span>
+    </div>
+  </div>
+
+  <!-- Status + actions -->
+  <div class="mod-side">
+    <span class="badge-status installed" *ngIf="patch.installed">Installed</span>
+    <span class="badge-status ready" *ngIf="patch.downloaded && !patch.installed">Downloaded</span>
+    <span class="badge-status not-downloaded" *ngIf="!patch.downloaded && !patch._downloadPollActive">Not downloaded</span>
+
+    <!-- Download progress -->
+    <div class="mod-progress" *ngIf="patch._downloadPollActive">
+      <div class="progress-label">
+        <span><i class="fa fa-download me-1"></i>{{ progressPct(patch.patchUrl) }}%</span>
+        <span *ngIf="downloadSpeed[patch.patchUrl]">{{ downloadSpeed[patch.patchUrl] }}</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" [style.width.%]="progressPct(patch.patchUrl)"></div>
+      </div>
+    </div>
+
+    <div class="mod-actions" *ngIf="!patch._loadingDownload && !patch._loadingInstall && !patch._loadingDelete && !patch._downloadPollActive">
+      <!-- Download -->
+      <button class="btn btn-sm btn-accent" *ngIf="!patch.downloaded" (click)="downloadPatch(patch)">
+        <i class="fa fa-download me-1"></i>Download
+      </button>
+      <!-- Install -->
+      <button class="btn btn-sm btn-accent" *ngIf="patch.downloaded && !patch.installed" (click)="installPatch(patch)">
+        <i class="fa fa-circle-down me-1"></i>Install
+      </button>
+      <!-- Uninstall -->
+      <button class="btn btn-sm btn-outline-danger" *ngIf="patch.installed" (click)="uninstallPatch(patch)">
+        <i class="fa fa-eject me-1"></i>Uninstall
+      </button>
+      <!-- Delete files -->
+      <button class="btn btn-sm btn-outline-dim" *ngIf="patch.downloaded && !patch.installed"
+              (click)="deletePatch(patch)" ngbTooltip="Delete downloaded files">
+        <i class="fa fa-trash"></i>
+      </button>
+    </div>
+
+    <span *ngIf="patch._loadingDownload && !patch._downloadPollActive" class="text-secondary">
+      <i class="fa fa-spin fa-spinner me-1"></i>Starting…
+    </span>
+    <span *ngIf="patch._loadingInstall" class="text-secondary">
+      <i class="fa fa-spin fa-spinner me-1"></i>Installing…
+    </span>
+    <span *ngIf="patch._loadingDelete" class="text-secondary">
+      <i class="fa fa-spin fa-spinner me-1"></i>Removing…
+    </span>
+  </div>
+</div>

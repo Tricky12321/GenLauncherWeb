@@ -1,8 +1,9 @@
 import {Component, OnInit} from '@angular/core';
-import {Router} from "@angular/router";
 import {GeneralService} from "../../services/general.service";
-import {ReposModsData} from "../../models/ReposModsData";
+import {ModAddonsAndPatches} from "../../models/ModAddonsAndPatches";
 import {ToastrService} from "ngx-toastr";
+import {errorMessage} from "../util";
+import {GameType, gameDisplayName} from "../../models/GameType";
 
 @Component({
     selector: 'add-mod',
@@ -11,39 +12,58 @@ import {ToastrService} from "ngx-toastr";
     standalone: false
 })
 export class AddModComponent implements OnInit {
-  dtOptions: DataTables.Settings = {
-    paging: false,
-    scrollY: "600px",
-  };
+  public mods: ModAddonsAndPatches[] | null = null;
+  public filter: string = '';
+  public game: GameType | null = null;
 
-  constructor(public router: Router, public generalService: GeneralService, public toastrService: ToastrService) {
+  protected readonly GameType = GameType;
+  protected readonly gameDisplayName = gameDisplayName;
 
+  constructor(public generalService: GeneralService, public toastrService: ToastrService) {
   }
-
-  public repoModsData: ReposModsData;
 
   ngOnInit(): void {
     this.load();
   }
 
-
   public load() {
-    this.generalService.getModList().subscribe(success => {
-      success.modDatas.map(x => {
-        x.adding = false;
-        x.added = false;
-      });
-      this.repoModsData = success;
-    })
+    this.mods = null;
+    this.generalService.getModList().subscribe({
+      next: repoData => {
+        // added/installed come from the backend; adding is client-side state
+        repoData.modDatas.forEach(x => x.adding = false);
+        this.game = repoData.game;
+        this.mods = repoData.modDatas;
+      },
+      error: err => {
+        this.mods = [];
+        this.toastrService.error(errorMessage(err), 'Could not load mod repository');
+      }
+    });
   }
 
-  addMod(modName: string) {
-    // TODO: Add error handling
-    var mod = this.repoModsData.modDatas.find(x => x.modName == modName);
+  filteredMods(): ModAddonsAndPatches[] {
+    if (this.mods == null) {
+      return [];
+    }
+    const needle = this.filter.trim().toLowerCase();
+    if (needle === '') {
+      return this.mods;
+    }
+    return this.mods.filter(x => x.modName.toLowerCase().includes(needle));
+  }
+
+  addMod(mod: ModAddonsAndPatches) {
     mod.adding = true;
-    this.generalService.addMod(modName).subscribe(success => {
-      this.toastrService.success("Added mod " + modName);
-      mod.added = true;
-    })
+    this.generalService.addMod(mod.modName).subscribe({
+      next: () => {
+        this.toastrService.success(mod.modName + ' added to your list');
+        mod.added = true;
+      },
+      error: err => {
+        mod.adding = false;
+        this.toastrService.error(errorMessage(err), 'Could not add mod');
+      }
+    });
   }
 }

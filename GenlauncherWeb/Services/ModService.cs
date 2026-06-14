@@ -5,14 +5,12 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using ElectronNET.API.Entities;
+using GenLauncherWeb.Enums;
+using GenLauncherWeb.Middleware;
 using GenLauncherWeb.Models;
-using Microsoft.AspNetCore.DataProtection.XmlEncryption;
 using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 
 namespace GenLauncherWeb.Services;
@@ -20,13 +18,15 @@ namespace GenLauncherWeb.Services;
 public class ModService
 {
     private readonly RepoService _repoService;
-    private static List<Mod> _addedModList;
     private readonly SteamService _steamService;
     private readonly S3StorageService _s3StorageService;
-    private static object _lock = new object();
-    private static ConcurrentDictionary<string, ModDownloadProgress> _modInstallInfo = new ConcurrentDictionary<string, ModDownloadProgress>();
     private readonly OptionsService _optionsService;
-    private const string ModListFile = "genlauncher_modlist.json";
+
+    private readonly object _lock = new();
+    private readonly Dictionary<GameType, List<Mod>> _modLists = new();
+    private readonly ConcurrentDictionary<string, ModDownloadProgress> _modInstallInfo = new();
+
+    private const string LegacyModListFile = "genlauncher_modlist.json";
     public const string BackupOriginalGameFilesDir = "OriginalGameFiles";
     public readonly string ModdedGameExeDownloadLink;
     public readonly string GenToolDllHash;
@@ -41,232 +41,269 @@ public class ModService
         ModdedGameExeDownloadLink = configuration["Extra:ModdedExeDownloadLink"];
         GenToolDllHash = configuration["Extra:GentoolDllHash"];
         GentoolDownloadLink = configuration["Extra:GentoolDownloadLink"];
-        ReadModListFile();
+    }
+
+    // ---------------------------------------------------------------- paths
+
+    private GameType SelectedGame => _optionsService.GetOptions().SelectedGame;
+
+    private string SteamPathOverride => _optionsService.GetOptions().SteamPath;
+
+    public string GetModStorageDir()
+    {
+        var dir = SteamService.GetModDir(SteamPathOverride);
+        dir.CreateFolderIfItDoesNotExist();
+        return dir;
+    }
+
+    private string GetGameDir(GameType game)
+    {
+        return SteamService.GetGameInstallDir(game, SteamPathOverride);
+    }
+
+    private string GetModListFilePath(GameType game)
+    {
+        var fileName = game == GameType.Gen ? "genlauncher_modlist_gen.json" : "genlauncher_modlist_zh.json";
+        return Path.Combine(GetModStorageDir(), fileName);
+    }
+
+    private string GetBackupFolder(GameType game)
+    {
+        return Path.Combine(GetModStorageDir(), BackupOriginalGameFilesDir, game.ToString());
+    }
+
+    // ------------------------------------------------------- list management
+
+    /// <summary>
+    /// Loads (once) and returns the mod list of a game. Callers must hold the lock.
+    /// </summary>
+    private List<Mod> GetModList(GameType game)
+    {
+        if (_modLists.TryGetValue(game, out var list))
+        {
+            return list;
+        }
+
+        var filePath = GetModListFilePath(game);
+        if (game == GameType.ZH && !File.Exists(filePath))
+        {
+            // Older versions stored the (ZH-only) mod list in a shared file
+            var legacyFile = Path.Combine(GetModStorageDir(), LegacyModListFile);
+            if (File.Exists(legacyFile))
+            {
+                File.Move(legacyFile, filePath);
+            }
+        }
+
+        list = File.Exists(filePath)
+            ? JsonConvert.DeserializeObject<List<Mod>>(File.ReadAllText(filePath)) ?? new List<Mod>()
+            : new List<Mod>();
+
+        // Transient flags must not survive a restart; backfill the game tag for
+        // entries written before it existed
+        foreach (var mod in list)
+        {
+            mod.Downloading = false;
+            mod.Installing = false;
+            if (mod.Game != GameType.Gen && mod.Game != GameType.ZH)
+            {
+                mod.Game = game;
+            }
+        }
+
+        _modLists[game] = list;
+        return list;
+    }
+
+    private void UpdateModListFile(GameType game)
+    {
+        var json = JsonConvert.SerializeObject(_modLists[game]);
+        File.WriteAllText(GetModListFilePath(game), json);
+    }
+
+    private Mod FindMod(GameType game, string modName)
+    {
+        var mod = GetModList(game).FirstOrDefault(x => string.Equals(x.ModInfo.ModName.Trim(), modName.Trim(), StringComparison.CurrentCultureIgnoreCase));
+        if (mod == null)
+        {
+            throw new ApiException(404, $"Mod '{modName}' is not in the mod list.");
+        }
+
+        return mod;
+    }
+
+    public List<Mod> GetAddedMods()
+    {
+        lock (_lock)
+        {
+            return GetModList(SelectedGame);
+        }
+    }
+
+    /// <summary>
+    /// All repository mods of the selected game, flagged with whether they are
+    /// already in the user's list and whether they are installed.
+    /// </summary>
+    public ReposModsData GetBrowseMods()
+    {
+        var game = SelectedGame;
+        var repoData = _repoService.GetRepoData(game);
+        lock (_lock)
+        {
+            var addedMods = GetModList(game);
+            // Return a copy: the cached repo data must not be mutated
+            return new ReposModsData
+            {
+                Game = game,
+                LauncherVersion = repoData.LauncherVersion,
+                DownloadLink = repoData.DownloadLink,
+                VulkanReposData = repoData.VulkanReposData,
+                modDatas = repoData.modDatas.Select(x =>
+                {
+                    var addedMod = addedMods.FirstOrDefault(y => y.ModInfo.ModName == x.ModName);
+                    return new ModAddonsAndPatches
+                    {
+                        ModId = x.ModId,
+                        ModName = x.ModName,
+                        ModLink = x.ModLink,
+                        ModPatches = x.ModPatches,
+                        ModAddons = x.ModAddons,
+                        Added = addedMod != null,
+                        Downloaded = addedMod?.Downloaded ?? false,
+                        Installed = addedMod?.Installed ?? false
+                    };
+                }).ToList(),
+                globalAddonsData = repoData.globalAddonsData,
+                originalGameAddons = repoData.originalGameAddons,
+                originalGamePatches = repoData.originalGamePatches,
+                AdvData = repoData.AdvData
+            };
+        }
     }
 
     public void AddModToModList(string modName)
     {
+        var game = SelectedGame;
+        var repoData = _repoService.GetRepoData(game);
         lock (_lock)
         {
-            var repoData = _repoService.GetRepoData();
-            var mod = repoData.modDatas.First(x => String.Equals(x.ModName.Trim(), modName.Trim(), StringComparison.CurrentCultureIgnoreCase));
-            // Check if the mod is already added
-            if (_addedModList.Any(x => x.ModInfo.ModName == mod.ModName))
+            var modList = GetModList(game);
+            var mod = repoData.modDatas.FirstOrDefault(x => string.Equals(x.ModName.Trim(), modName.Trim(), StringComparison.CurrentCultureIgnoreCase));
+            if (mod == null)
+            {
+                throw new ApiException(404, $"Mod '{modName}' was not found in the repository.");
+            }
+
+            if (modList.Any(x => x.ModInfo.ModName == mod.ModName))
             {
                 return;
             }
 
-            _addedModList.Add(new Mod
+            modList.Add(new Mod
             {
+                Game = game,
                 Installed = false,
                 Downloaded = false,
                 DownloadedVersion = "",
                 ModInfo = mod
             });
-            UpdateModListFile();
-        }
-    }
-
-    private void UpdateModListFile()
-    {
-        var filePath = _steamService.GetModDir();
-        var jsonFile = Path.Combine(filePath, ModListFile);
-        var json = JsonConvert.SerializeObject(_addedModList);
-        Console.WriteLine("Updating mod list file: " + jsonFile);
-        File.WriteAllText(jsonFile, json);
-        Console.WriteLine("Mod list file updated");
-    }
-
-    private void ReadModListFile()
-    {
-        lock (_lock)
-        {
-            var filePath = _steamService.GetModDir();
-            filePath.CreateFolderIfItDoesNotExist();
-            var jsonFile = Path.Combine(filePath, ModListFile);
-            if (File.Exists(jsonFile))
-            {
-                _addedModList = JsonConvert.DeserializeObject<List<Mod>>(File.ReadAllText(jsonFile));
-            }
-            else
-            {
-                _addedModList = new List<Mod>();
-                UpdateModListFile();
-            }
+            UpdateModListFile(game);
         }
     }
 
     public void RemoveModFromModList(string modName)
     {
+        var game = SelectedGame;
         lock (_lock)
         {
-            // Ensure the mod is not installed before removing
-            if (_addedModList.First(x => x.ModInfo.ModName == modName).Installed == false)
+            var modList = GetModList(game);
+            var mod = FindMod(game, modName);
+            if (mod.Installed)
             {
-                _addedModList = _addedModList.Where(x => x.ModInfo.ModName != modName).ToList();
-                UpdateModListFile();
+                throw new ApiException(409, "The mod is installed. Uninstall it before removing it from the list.");
             }
+
+            // No orphaned files in mod storage
+            DeleteModFilesCore(mod);
+            modList.Remove(mod);
+            UpdateModListFile(game);
         }
-
-        return;
     }
 
-    public List<Mod> GetAddedMods()
-    {
-        return _addedModList;
-    }
+    // ------------------------------------------------------------- download
 
     public async Task DownloadMod(string modName)
     {
-        var actualMod = _addedModList.First(x => x.ModInfo.ModName.Trim().ToLower() == modName.Trim().ToLower());
+        var game = SelectedGame;
+        Mod mod;
         lock (_lock)
         {
-            actualMod.Downloading = true;
-            UpdateModListFile();
-        }
-
-        var installedFiles = new List<string>();
-        var cleanedModName = actualMod.ModInfo.ModName.CleanString();
-        ulong totalInstallSize = 0;
-        Console.Write("Downloading " + cleanedModName + "...");
-        if (actualMod.HasS3Storage())
-        {
-            Console.WriteLine("Using S3 storage...");
-            var modDir = Path.Combine(_steamService.GetModDir(), cleanedModName);
-            modDir.CreateFolderIfItDoesNotExist();
-            var fileList = _s3StorageService.GetModFiles(actualMod);
-            ulong totalSize = 0;
-            fileList.ForEach(x => { totalSize += x.Size; });
-            CreateBaseDownloadProgress(totalSize, fileList, cleanedModName);
-            foreach (var file in fileList)
+            mod = FindMod(game, modName);
+            if (mod.Downloading)
             {
-                var filePath = Path.Combine(modDir, file.FileName);
-                if (File.Exists(filePath))
-                {
-                    // Check the hash of the file
-                    var fileHash = filePath.GetMd5HashOfFile();
-                    if (fileHash == file.Hash)
-                    {
-                        _modInstallInfo[cleanedModName.StandardModName()].DownloadedFiles.Add(file.FileName);
-                        _modInstallInfo[cleanedModName.StandardModName()].DownloadedSize += file.Size;
-                        totalInstallSize += file.Size;
-                        Console.WriteLine("Hash matched for file " + file.FileName + " of size " + file.Size + ". It is already installed.");
-                        // Files match, no need to redownload
-                        continue;
-                    }
-
-                    // If the hash does not match, we delete it and redownload
-                    File.Delete(filePath);
-                }
-
-                Path.GetDirectoryName(filePath).CreateFolderIfItDoesNotExist();
-                var fileBytes = await _s3StorageService.DownloadS3File(file.FileName, actualMod);
-                await File.WriteAllBytesAsync(filePath, fileBytes);
-                // Check the hash of the file
-                var hashMatch = filePath.GetMd5HashOfFile() == file.Hash;
-                if (hashMatch)
-                {
-                    Console.WriteLine("Hash matched for file " + file.FileName + " of size " + file.Size);
-                    installedFiles.Add(file.FileName);
-                    _modInstallInfo[cleanedModName.StandardModName()].DownloadedFiles.Add(file.FileName);
-                    totalInstallSize += file.Size;
-                    _modInstallInfo[cleanedModName.StandardModName()].DownloadedSize += file.Size;
-                }
-                else
-                {
-                    if (!filePath.ToLower().Contains("changelog") && Path.GetExtension(filePath).ToLower() != ".txt")
-                    {
-                        throw new Exception("Hash did not match, file failed to install " + file.FileName);
-                    }
-                }
+                throw new ApiException(409, "This mod is already being downloaded.");
             }
 
-            _modInstallInfo[cleanedModName.StandardModName()].Downloaded = true;
+            mod.Downloading = true;
+            UpdateModListFile(game);
         }
-        else
+
+        var progressKey = mod.ModInfo.ModName.StandardModName();
+        try
         {
-            Console.WriteLine("Using simple download method...");
-            var modDir = Path.Combine(_steamService.GetModDir(), cleanedModName);
+            var cleanedModName = mod.ModInfo.ModName.CleanString();
+            var modDir = Path.Combine(GetModStorageDir(), cleanedModName);
             modDir.CreateFolderIfItDoesNotExist();
-            byte[] fileBytes;
-            MediaTypeHeaderValue fileMimeType;
-            _modInstallInfo[cleanedModName] = new ModDownloadProgress();
-            using (var client = new HttpClient())
+
+            List<string> installedFiles;
+            ulong totalInstallSize;
+            if (mod.HasS3Storage())
             {
-                var link = actualMod.ModData.SimpleDownloadLink.ParseDownloadLink();
-
-                // Get the response message and ensure success status code
-                var response = await client.GetAsync(link, HttpCompletionOption.ResponseHeadersRead);
-                response.EnsureSuccessStatusCode();
-
-                // Get total file size from the content headers
-                var totalSize = response.Content.Headers.ContentLength ?? -1L;
-
-                // Set up buffers
-                byte[] buffer = new byte[8192]; // 8KB buffer size
-                ulong bytesDownloaded = 0;
-
-                // Open response stream
-                using (var contentStream = await response.Content.ReadAsStreamAsync())
-                {
-                    // Create memory stream or file stream to store downloaded data
-                    using (var fileStream = new MemoryStream()) // Or FileStream if saving to a file
-                    {
-                        int readBytes;
-                        while ((readBytes = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                        {
-                            // Write to the file (or memory stream)
-                            await fileStream.WriteAsync(buffer, 0, readBytes);
-
-                            // Update the downloaded bytes
-                            bytesDownloaded += (ulong)readBytes;
-
-                            // Call the progress update method
-                            CreateBaseDownloadProgress(modName, (ulong)totalSize, bytesDownloaded);
-
-                            // Optional: Add a delay if you want to reduce update frequency (not necessary in most cases)
-                            // await Task.Delay(500); 
-                        }
-
-                        // Once done, retrieve the final file bytes
-                        fileBytes = fileStream.ToArray();
-                    }
-                }
-
-                fileMimeType = response.Content.Headers.ContentType;
-                Console.WriteLine("Download complete!");
+                (installedFiles, totalInstallSize) = await DownloadModFromS3(mod, modDir, progressKey);
+            }
+            else
+            {
+                (installedFiles, totalInstallSize) = await DownloadModFromSimpleLink(mod, modDir, progressKey);
             }
 
-            var fileExtension = fileMimeType.ToString().GetFileExtensionFromMimeType();
-            var fileName = Path.Combine(modDir, cleanedModName + fileExtension);
-            File.WriteAllBytes(fileName, fileBytes);
-            // Extract the file
+            lock (_lock)
+            {
+                mod.TotalSize = totalInstallSize;
+                mod.Downloaded = true;
+                mod.DownloadedVersion = mod.ModData.Version;
+                mod.DownloadedFiles = installedFiles;
+                mod.ModDir = modDir;
+                UpdateModListFile(game);
+            }
 
-            fileName.ExtractFile();
-            Console.WriteLine("Extract complete! (destination: " + modDir + ")");
-            Console.WriteLine("Scanning for files");
-            installedFiles = Extensions.GetAllFilesRecursively(modDir);
-            totalInstallSize = (ulong)Extensions.GetTotalSizeInBytes(installedFiles);
-            _modInstallInfo[cleanedModName.StandardModName()].Downloaded = true;
-            _modInstallInfo[cleanedModName.StandardModName()].DownloadedFiles = installedFiles;
-            _modInstallInfo[cleanedModName.StandardModName()].DownloadedSize = totalInstallSize;
+            if (_modInstallInfo.TryGetValue(progressKey, out var progress))
+            {
+                progress.Downloaded = true;
+            }
         }
-
-        lock (_lock)
+        catch
         {
-            var mod = _addedModList.First(x => x.ModInfo.ModName.Trim().ToLower() == modName.Trim().ToLower());
-            mod.TotalSize = totalInstallSize;
-            mod.Downloaded = true;
-            mod.DownloadedVersion = mod.ModData.Version;
-            mod.DownloadedFiles = installedFiles;
-            mod.ModDir = Path.Combine(_steamService.GetModDir(), cleanedModName);
-            UpdateModListFile();
+            // Stop the poller from waiting on a download that died
+            _modInstallInfo.TryRemove(progressKey, out _);
+            throw;
+        }
+        finally
+        {
+            lock (_lock)
+            {
+                mod.Downloading = false;
+                UpdateModListFile(game);
+            }
         }
     }
 
-    private void CreateBaseDownloadProgress(ulong totalSize, List<ModificationFileInfo> fileList, string cleanedModName)
+    private async Task<(List<string> installedFiles, ulong totalSize)> DownloadModFromS3(Mod mod, string modDir, string progressKey)
     {
-        ModDownloadProgress downloadProgress = new ModDownloadProgress()
+        var fileList = _s3StorageService.GetModFiles(mod);
+        ulong totalSize = 0;
+        fileList.ForEach(x => totalSize += x.Size);
+
+        var progress = new ModDownloadProgress
         {
             TotalDownloadSize = totalSize,
             FileList = fileList.Select(x => x.FileName).ToList(),
@@ -274,87 +311,166 @@ public class ModService
             DownloadedSize = 0,
             Downloaded = false
         };
-        _modInstallInfo.TryAdd(cleanedModName.StandardModName(), downloadProgress);
-    }
+        _modInstallInfo[progressKey] = progress;
 
-    public void CreateBaseDownloadProgress(string modname, ulong totalSize, ulong currentDownload = 0)
-    {
-        var standardModname = modname.StandardModName();
-        ModDownloadProgress downloadProgress = new ModDownloadProgress()
+        var installedFiles = new List<string>();
+        ulong totalInstallSize = 0;
+        foreach (var file in fileList)
         {
-            TotalDownloadSize = totalSize,
-            FileList = new List<string>(),
-            DownloadedFiles = new List<string>(),
-            DownloadedSize = currentDownload,
-            Downloaded = totalSize == currentDownload
-        };
-        if (_modInstallInfo.ContainsKey(standardModname))
-        {
-            _modInstallInfo[standardModname] = downloadProgress;
-        }
-        else
-        {
-            _modInstallInfo.TryAdd(standardModname, downloadProgress);
-        }
-    }
-
-    public void UninstallMod(string modName)
-    {
-        lock (_lock)
-        {
-            var mod = _addedModList.First(x => x.ModInfo.ModName == modName);
-            var gameFolder = SteamService.GetGameInstallDir();
-            foreach (var modFile in mod.DownloadedFiles)
+            var filePath = Path.Combine(modDir, file.FileName);
+            if (File.Exists(filePath))
             {
-                var modFileName = modFile.FixModFileName();
-                var gameFilePath = Path.Combine(gameFolder, modFileName);
-                // Attempt to restore an original game file, if it exists
-                // If the file cannot be restored, which would indicate it is not a original game file, delete it
-                if (!RestoreOriginalGameFile(modFile) && File.Exists(gameFilePath))
+                if (filePath.GetMd5HashOfFile() == file.Hash)
                 {
-                    Console.WriteLine("No file to restore, deleting " + gameFilePath);
-                    File.Delete(gameFilePath);
+                    // Already downloaded earlier (resumed download)
+                    progress.DownloadedFiles.Add(file.FileName);
+                    progress.DownloadedSize += file.Size;
+                    installedFiles.Add(file.FileName);
+                    totalInstallSize += file.Size;
+                    continue;
                 }
+
+                File.Delete(filePath);
             }
 
-            mod.Installed = false;
-            Console.WriteLine("Uninstalled " + mod.ModInfo.ModName + " successfully!");
-            UpdateModListFile();
+            Path.GetDirectoryName(filePath).CreateFolderIfItDoesNotExist();
+            await _s3StorageService.DownloadS3FileToPath(mod, file.FileName, filePath, read => progress.DownloadedSize += (ulong)read);
+
+            if (filePath.GetMd5HashOfFile() == file.Hash)
+            {
+                progress.DownloadedFiles.Add(file.FileName);
+                installedFiles.Add(file.FileName);
+                totalInstallSize += file.Size;
+            }
+            else if (!filePath.ToLower().Contains("changelog") && Path.GetExtension(filePath).ToLower() != ".txt")
+            {
+                throw new ApiException(502, "Hash did not match, file failed to download: " + file.FileName);
+            }
         }
+
+        return (installedFiles, totalInstallSize);
     }
+
+    private async Task<(List<string> installedFiles, ulong totalSize)> DownloadModFromSimpleLink(Mod mod, string modDir, string progressKey)
+    {
+        var progress = new ModDownloadProgress
+        {
+            TotalDownloadSize = 0,
+            FileList = new List<string>(),
+            DownloadedFiles = new List<string>(),
+            DownloadedSize = 0,
+            Downloaded = false
+        };
+        _modInstallInfo[progressKey] = progress;
+
+        var link = mod.ModData.SimpleDownloadLink.ParseDownloadLink();
+        using var client = new HttpClient();
+        client.Timeout = TimeSpan.FromHours(2);
+        using var response = await client.GetAsync(link, HttpCompletionOption.ResponseHeadersRead);
+        response.EnsureSuccessStatusCode();
+
+        progress.TotalDownloadSize = (ulong)(response.Content.Headers.ContentLength ?? 0);
+
+        // Prefer the MIME type for the archive extension, fall back to the URL
+        var extension = response.Content.Headers.ContentType?.MediaType?.GetFileExtensionFromMimeType()
+                        ?? Path.GetExtension(new Uri(link).AbsolutePath);
+        var archivePath = Path.Combine(modDir, Path.GetFileName(modDir) + extension);
+
+        // Stream straight to disk; large mods must not be buffered in memory
+        await using (var contentStream = await response.Content.ReadAsStreamAsync())
+        await using (var fileStream = File.Create(archivePath))
+        {
+            var buffer = new byte[81920];
+            int read;
+            while ((read = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+            {
+                await fileStream.WriteAsync(buffer, 0, read);
+                progress.DownloadedSize += (ulong)read;
+            }
+        }
+
+        if (!archivePath.ExtractFile())
+        {
+            throw new ApiException(502, "Downloaded mod archive could not be extracted: " + Path.GetFileName(archivePath));
+        }
+
+        var allFiles = Extensions.GetAllFilesRecursively(modDir);
+        // Stored relative to the mod folder so install can project them into the game folder
+        var installedFiles = allFiles.Select(f => Path.GetRelativePath(modDir, f)).ToList();
+        var totalInstallSize = (ulong)Extensions.GetTotalSizeInBytes(allFiles);
+
+        progress.DownloadedFiles = installedFiles;
+        progress.DownloadedSize = totalInstallSize;
+        if (progress.TotalDownloadSize == 0)
+        {
+            progress.TotalDownloadSize = totalInstallSize;
+        }
+
+        return (installedFiles, totalInstallSize);
+    }
+
+    public ModDownloadProgress GetModDownloadProgress(string modName)
+    {
+        var key = modName.StandardModName();
+        if (_modInstallInfo.TryGetValue(key, out var progress))
+        {
+            if (progress.Downloaded)
+            {
+                // Final progress is handed out once, then the entry is cleared
+                _modInstallInfo.TryRemove(key, out _);
+            }
+
+            return progress;
+        }
+
+        return new ModDownloadProgress
+        {
+            DownloadedFiles = null,
+            FileList = null,
+            DownloadedSize = 0,
+            TotalDownloadSize = 0,
+            Downloaded = false
+        };
+    }
+
+    // -------------------------------------------------- install / uninstall
 
     public void InstallMod(string modName)
     {
+        var game = SelectedGame;
         lock (_lock)
         {
-            EnsureModdedLauncherInstalled();
-            var mod = _addedModList.First(x => x.ModInfo.ModName == modName);
-            // There can only be one installed mod at a time
-            // This is to ensure mod compatibility
-            if (_addedModList.Any(x => x.Installed))
+            var modList = GetModList(game);
+            var mod = FindMod(game, modName);
+            if (!mod.Downloaded || mod.DownloadedFiles == null)
             {
-                throw new Exception("There is already another mod installed. Please uninstall it first.");
+                throw new ApiException(409, "The mod must be downloaded before it can be installed.");
             }
 
-            var gameFolder = SteamService.GetGameInstallDir();
-            var modDir = _steamService.GetModDir();
-            var modFolder = mod.ModDir;
+            // There can only be one installed mod at a time, to ensure mod compatibility
+            if (modList.Any(x => x.Installed))
+            {
+                throw new ApiException(409, "There is already another mod installed. Please uninstall it first.");
+            }
+
+            EnsureModdedLauncherInstalled(game);
+
+            var gameFolder = GetGameDir(game);
+            var options = _optionsService.GetOptions();
             foreach (var modFile in mod.DownloadedFiles)
             {
                 var modFileName = modFile.FixModFileName();
-
                 var gameFilePath = Path.Combine(gameFolder, modFileName);
                 if (File.Exists(gameFilePath))
                 {
-                    BackupOriginalGameFile(gameFilePath);
+                    BackupOriginalGameFile(game, modFileName);
                 }
 
-                var options = _optionsService.GetOptions();
-                var sourceFile = Path.Combine(modFolder, modFile);
+                var sourceFile = Path.Combine(mod.ModDir, modFile);
+                Path.GetDirectoryName(gameFilePath).CreateFolderIfItDoesNotExist();
                 switch (options.InstallMethod)
                 {
                     case InstallMethod.CopyFiles:
-                        Console.WriteLine("Copying file: " + sourceFile + " to: " + gameFilePath);
                         File.Copy(sourceFile, gameFilePath, true);
                         break;
                     case InstallMethod.SymLink:
@@ -363,259 +479,208 @@ public class ModService
                 }
             }
 
-            Console.WriteLine("Verify mod files are installed correctly...");
+            // Verify every file landed; roll back on any miss
             foreach (var modFile in mod.DownloadedFiles)
             {
-                var modFileName = modFile.FixModFileName();
-                var gameFilePath = Path.Combine(gameFolder, modFileName);
+                var gameFilePath = Path.Combine(gameFolder, modFile.FixModFileName());
                 if (!File.Exists(gameFilePath))
                 {
-                    mod.Installed = false;
-                    UninstallMod(modName);
-                    throw new Exception("Failed to install mod. File: " + gameFilePath + " does not exist");
-                }
-                else
-                {
-                    Console.WriteLine("Modfile: " + gameFilePath + " installed");
+                    UninstallCore(game, mod);
+                    UpdateModListFile(game);
+                    throw new ApiException(500, "Failed to install mod. File: " + gameFilePath + " does not exist");
                 }
             }
-
 
             mod.Installed = true;
-            Console.WriteLine("Mod " + modName + " is now installed!");
-            UpdateModListFile();
-            EnsureModdedLauncherInstalled();
+            UpdateModListFile(game);
         }
     }
 
-    /// <summary>
-    /// Will move original game files into a seperate folder, keeping the folder structure
-    /// </summary>
-    /// <param name="filename"></param>
-    public void BackupOriginalGameFile(string filename)
+    public void UninstallMod(string modName)
     {
-        var gameDir = SteamService.GetGameInstallDir();
-        var modDir = _steamService.GetModDir();
-        var backupFolder = Path.Combine(modDir, BackupOriginalGameFilesDir);
-        backupFolder.CreateFolderIfItDoesNotExist();
-        Console.WriteLine("Backing up original game file: " + filename + " to: " + backupFolder);
-
-        var gameFile = Path.Combine(gameDir, filename);
-        var destination = Path.Combine(backupFolder, filename);
-
-        if (File.Exists(gameFile))
-        {
-            Path.GetDirectoryName(destination).CreateFolderIfItDoesNotExist();
-            File.Move(gameFile, destination, true);
-        }
-    }
-
-    /// <summary>
-    /// Will attempt to restore a original game file.
-    /// Return true of the file is restored
-    /// Return false if the file is not restore or does not exist
-    /// </summary>
-    /// <param name="filename">This should be the relative path from the game root folder</param>
-    /// <returns></returns>
-    public bool RestoreOriginalGameFile(string filename)
-    {
-        var gameDir = SteamService.GetGameInstallDir();
-        var modDir = _steamService.GetModDir();
-        var backupFolder = Path.Combine(modDir, BackupOriginalGameFilesDir);
-
-        var currentGameFile = Path.Combine(gameDir, filename);
-        var backupFile = Path.Combine(backupFolder, filename);
-        if (File.Exists(backupFile))
-        {
-            Console.WriteLine("Restoring original game file: " + filename);
-            File.Move(backupFile, currentGameFile, true);
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    public ReposModsData GetUnAddedMods()
-    {
-        var repoData = _repoService.GetRepoData();
-        repoData.modDatas = repoData.modDatas
-            .Where(x => !_addedModList.Any(y => y.ModInfo.ModName == x.ModName))
-            .ToList();
-        return repoData;
-    }
-
-    public ModDownloadProgress GetModDownloadProgress(string modName)
-    {
-        var standardModName = modName.StandardModName();
-        if (_modInstallInfo.ContainsKey(standardModName))
-        {
-            if (_modInstallInfo[standardModName].Downloaded)
-            {
-                _modInstallInfo.Remove(standardModName, out var modProgress);
-                return modProgress;
-            }
-
-            return _modInstallInfo[standardModName];
-        }
-        else
-        {
-            return new ModDownloadProgress()
-            {
-                DownloadedFiles = null,
-                FileList = null,
-                DownloadedSize = 0,
-                TotalDownloadSize = 0,
-                Downloaded = false
-            };
-        }
-    }
-
-    public void DeleteMod(string modRequestModName)
-    {
+        var game = SelectedGame;
         lock (_lock)
         {
-            var mod = _addedModList.First(x => x.ModInfo.ModName == modRequestModName);
-            mod.Downloaded = false;
-            mod.DownloadedVersion = null;
-            mod.Installed = false;
+            var mod = FindMod(game, modName);
+            UninstallCore(game, mod);
+            UpdateModListFile(game);
+        }
+    }
+
+    private void UninstallCore(GameType game, Mod mod)
+    {
+        var gameFolder = GetGameDir(game);
+
+        foreach (var modFile in mod.DownloadedFiles ?? new List<string>())
+        {
+            var modFileName = modFile.FixModFileName();
+            var gameFilePath = Path.Combine(gameFolder, modFileName);
+            // Restore the displaced original game file; a file without a backup was
+            // purely a mod file and is deleted instead
+            if (!RestoreOriginalGameFile(game, modFileName) && File.Exists(gameFilePath))
+            {
+                File.Delete(gameFilePath);
+            }
+        }
+
+        mod.Installed = false;
+    }
+
+    public void DeleteMod(string modName)
+    {
+        var game = SelectedGame;
+        lock (_lock)
+        {
+            var mod = FindMod(game, modName);
+            if (mod.Installed)
+            {
+                throw new ApiException(409, "Cannot delete the files of an installed mod. Uninstall it first.");
+            }
+
+            DeleteModFilesCore(mod);
+            UpdateModListFile(game);
+        }
+    }
+
+    private static void DeleteModFilesCore(Mod mod)
+    {
+        if (!string.IsNullOrEmpty(mod.ModDir))
+        {
             try
             {
                 Directory.Delete(mod.ModDir, true);
             }
-            catch (Exception e)
+            catch (DirectoryNotFoundException)
             {
-                Console.WriteLine(e);
+                // Already gone
             }
-
-            mod.DownloadedFiles = null;
-            mod.TotalSize = 0;
-            mod.ModDir = null;
-            UpdateModListFile();
         }
+
+        mod.Downloaded = false;
+        mod.DownloadedVersion = null;
+        mod.DownloadedFiles = null;
+        mod.TotalSize = 0;
+        mod.ModDir = null;
     }
 
-    public bool CheckModdedLauncherInstalled()
+    // ------------------------------------------------------ backup / restore
+
+    /// <summary>
+    /// Moves an original game file into the per-game backup folder, keeping the
+    /// folder structure. <paramref name="relativePath"/> is relative to the game root.
+    /// </summary>
+    public void BackupOriginalGameFile(GameType game, string relativePath)
     {
-        var gamePath = SteamService.GetGameInstallDir();
-        var modDir = Path.Combine(_steamService.GetModDir(), "Mo");
-        var gameExe = Path.Combine(gamePath, "Generals.exe");
+        var gameFile = Path.Combine(GetGameDir(game), relativePath);
+        if (!File.Exists(gameFile))
+        {
+            return;
+        }
+
+        var destination = Path.Combine(GetBackupFolder(game), relativePath);
+        Path.GetDirectoryName(destination).CreateFolderIfItDoesNotExist();
+        File.Move(gameFile, destination, true);
+    }
+
+    /// <summary>
+    /// Restores a backed-up original game file. Returns false when no backup exists.
+    /// </summary>
+    public bool RestoreOriginalGameFile(GameType game, string relativePath)
+    {
+        var currentGameFile = Path.Combine(GetGameDir(game), relativePath);
+        var backupFile = Path.Combine(GetBackupFolder(game), relativePath);
+        if (!File.Exists(backupFile) && game == GameType.ZH)
+        {
+            // Backups from before per-game folders lived directly in OriginalGameFiles/
+            backupFile = Path.Combine(GetModStorageDir(), BackupOriginalGameFilesDir, relativePath);
+        }
+
+        if (!File.Exists(backupFile))
+        {
+            return false;
+        }
+
+        Path.GetDirectoryName(currentGameFile).CreateFolderIfItDoesNotExist();
+        File.Move(backupFile, currentGameFile, true);
+        return true;
+    }
+
+    // ------------------------------------------------------- modded launcher
+
+    public bool CheckModdedLauncherInstalled(GameType game)
+    {
+        var gameExe = Path.Combine(GetGameDir(game), "Generals.exe");
+        var moddedExeFile = Path.Combine(GetModStorageDir(), "ModdedLauncher", "modded.exe");
+        return File.Exists(gameExe) && File.Exists(moddedExeFile) && gameExe.GetMd5HashOfFile() == moddedExeFile.GetMd5HashOfFile();
+    }
+
+    public void EnsureModdedLauncherInstalled(GameType game)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && _steamService.CheckGameRunning())
+        {
+            throw new ApiException(409, "Cannot install the modded launcher while the game is running. Please close the game first.");
+        }
+
+        if (CheckModdedLauncherInstalled(game))
+        {
+            return;
+        }
+
+        DownloadModdedExe();
+        InstallModdedLauncher(game);
+    }
+
+    private void InstallModdedLauncher(GameType game)
+    {
+        var gameExe = Path.Combine(GetGameDir(game), "Generals.exe");
+        var moddedExeFile = Path.Combine(GetModStorageDir(), "ModdedLauncher", "modded.exe");
+        if (!File.Exists(moddedExeFile))
+        {
+            throw new ApiException(500, "The modded launcher could not be downloaded. Mods will not work without it.");
+        }
+
         if (File.Exists(gameExe))
         {
-            var moddedExeFile = Path.Combine(_steamService.GetModDir(), "ModdedLauncher", "modded.exe");
-            if (File.Exists(moddedExeFile) && gameExe.GetMd5HashOfFile() == moddedExeFile.GetMd5HashOfFile())
-            {
-                return true;
-            }
+            BackupOriginalGameFile(game, "Generals.exe");
         }
 
-        return false;
-    }
-
-    public bool EnsureModdedLauncherInstalled()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        switch (_optionsService.GetOptions().InstallMethod)
         {
-            if (_steamService.CheckGameRunning())
-            {
-                throw new Exception("Failed to installed modded launcher, mods will not work without it. Please ensure that the game is not running");
-            }
-        }
-
-        try
-        {
-            var gamePath = SteamService.GetGameInstallDir();
-            var modDir = _steamService.GetModDir();
-            var gameExe = Path.Combine(gamePath, "Generals.exe");
-            if (File.Exists(gameExe))
-            {
-                Console.WriteLine("Game exe already exists, checking if it is already modded");
-                var moddedExeFile = Path.Combine(_steamService.GetModDir(), "ModdedLauncher", "modded.exe");
-                if (File.Exists(moddedExeFile))
-                {
-                    if (gameExe.GetMd5HashOfFile() == moddedExeFile.GetMd5HashOfFile())
-                    {
-                        Console.WriteLine("Game exe is already modded");
-                        return true;
-                    }
-
-                    BackupOriginalGameFile("Generals.exe");
-                }
-                else
-                {
-                    Console.WriteLine("Modded exe does not exist");
-                }
-            }
-
-            DownloadModdedExe();
-            InstallModdedLauncher();
-            return true;
-        }
-        catch (Exception e)
-        {
-            throw new Exception("Unknown error, failed to installed modded launcher, mods will not work without it.\n" + e.ToString());
-        }
-    }
-
-    private void InstallModdedLauncher()
-    {
-        var gamePath = SteamService.GetGameInstallDir();
-        var gameExe = Path.Combine(gamePath, "Generals.exe");
-        var moddedExeFolder = Path.Combine(_steamService.GetModDir(), "ModdedLauncher");
-        moddedExeFolder.CreateFolderIfItDoesNotExist();
-        var moddedExeFile = Path.Combine(moddedExeFolder, "modded.exe");
-        if (File.Exists(gameExe))
-        {
-            BackupOriginalGameFile("Generals.exe");
-        }
-
-        if (File.Exists(moddedExeFile))
-        {
-            var options = _optionsService.GetOptions();
-            switch (options.InstallMethod)
-            {
-                case InstallMethod.CopyFiles:
-                    File.Copy(moddedExeFile, gameExe);
-                    break;
-                case InstallMethod.SymLink:
-                    SymLinkService.CreateSymbolicLink(gameExe, moddedExeFile);
-                    break;
-            }
+            case InstallMethod.CopyFiles:
+                File.Copy(moddedExeFile, gameExe, true);
+                break;
+            case InstallMethod.SymLink:
+                SymLinkService.CreateSymbolicLink(gameExe, moddedExeFile);
+                break;
         }
     }
 
     private void DownloadModdedExe()
     {
-        var modFolder = _steamService.GetModDir();
-
-        var moddedExeFolder = Path.Combine(modFolder, "ModdedLauncher");
+        var moddedExeFolder = Path.Combine(GetModStorageDir(), "ModdedLauncher");
         moddedExeFolder.CreateFolderIfItDoesNotExist();
         var moddedExeFile = Path.Combine(moddedExeFolder, "modded.exe");
-        if (Directory.Exists(moddedExeFolder) && File.Exists(moddedExeFile))
+        if (File.Exists(moddedExeFile))
         {
             return;
         }
 
-        Console.WriteLine("Downloading modded launcher");
-        // Now download the modded.exe file from GitHub
-        using (var client = new HttpClient())
-        {
-            var result = client.GetAsync(ModdedGameExeDownloadLink).GetAwaiter().GetResult();
-            var fileData = result.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
-            var filePath = Path.Combine(moddedExeFolder, "modded.exe");
-            File.WriteAllBytes(filePath, fileData);
-        }
+        using var client = new HttpClient();
+        var fileData = client.GetByteArrayAsync(ModdedGameExeDownloadLink).GetAwaiter().GetResult();
+        File.WriteAllBytes(moddedExeFile, fileData);
     }
+
+    // ---------------------------------------------------------------- GenTool
 
     public InstallationStatus GetInstallationStatus()
     {
+        var game = SelectedGame;
         bool moddedLauncher;
         try
         {
-            moddedLauncher = CheckModdedLauncherInstalled();
+            moddedLauncher = CheckModdedLauncherInstalled(game);
         }
-        catch (Exception e)
+        catch
         {
             moddedLauncher = false;
         }
@@ -623,9 +688,9 @@ public class ModService
         bool genTool;
         try
         {
-            genTool = CheckGenToolInstalled();
+            genTool = CheckGenToolInstalled(game);
         }
-        catch (Exception e)
+        catch
         {
             genTool = false;
         }
@@ -637,85 +702,61 @@ public class ModService
         };
     }
 
-    public bool CheckGenToolInstalled()
+    public bool CheckGenToolInstalled(GameType game)
     {
-        SteamService.GetGameInstallDir();
-        var gentoolDll = Path.Combine(SteamService.GetGameInstallDir(), "d3d8.dll");
-        if (!File.Exists(gentoolDll))
-        {
-            return false;
-        }
-
-        var currentDllHash = gentoolDll.GetMd5HashOfFile();
-        if (currentDllHash == GenToolDllHash)
-        {
-            return true;
-        }
-
-        return false;
+        var gentoolDll = Path.Combine(GetGameDir(game), "d3d8.dll");
+        return File.Exists(gentoolDll) && gentoolDll.GetMd5HashOfFile() == GenToolDllHash;
     }
 
     public bool EnsureGenToolInstalled()
     {
-        SteamService.GetGameInstallDir();
-        var originalDll = Path.Combine(SteamService.GetGameInstallDir(), "d3d8.dll");
-        if (File.Exists(originalDll))
+        var game = SelectedGame;
+        if (CheckGenToolInstalled(game))
         {
-            var currentDllHash = originalDll.GetMd5HashOfFile();
-            if (CheckGenToolInstalled())
-            {
-                return true;
-            }
+            return true;
         }
 
-        BackupOriginalGameFile("d3d8.dll");
+        BackupOriginalGameFile(game, "d3d8.dll");
         DownloadGenTool();
-        InstallGenTool();
+        InstallGenTool(game);
         return true;
     }
 
-    private void InstallGenTool()
+    private void InstallGenTool(GameType game)
     {
-        var gameDir = SteamService.GetGameInstallDir();
-        var modDir = _steamService.GetModDir();
-        var genToolFolder = Path.Combine(modDir, "GenTool");
+        var gameDir = GetGameDir(game);
+        var genToolFolder = Path.Combine(GetModStorageDir(), "GenTool");
         var d3d8Dll = Extensions.FindFileRecursively(genToolFolder, "d3d8.dll");
-        if (File.Exists(d3d8Dll))
+        if (d3d8Dll == null || !File.Exists(d3d8Dll))
         {
-            var options = _optionsService.GetOptions();
-            switch (options.InstallMethod)
-            {
-                case InstallMethod.CopyFiles:
-                    Console.WriteLine("Copying d3d8.dll from " + genToolFolder + " to " + gameDir);
-                    File.Copy(d3d8Dll, Path.Combine(gameDir, "d3d8.dll"), false);
-                    break;
-                case InstallMethod.SymLink:
-                    SymLinkService.CreateSymbolicLink(Path.Combine(gameDir, "d3d8.dll"), d3d8Dll);
-                    break;
-            }
+            throw new ApiException(500, "GenTool could not be downloaded.");
+        }
+
+        switch (_optionsService.GetOptions().InstallMethod)
+        {
+            case InstallMethod.CopyFiles:
+                File.Copy(d3d8Dll, Path.Combine(gameDir, "d3d8.dll"), true);
+                break;
+            case InstallMethod.SymLink:
+                SymLinkService.CreateSymbolicLink(Path.Combine(gameDir, "d3d8.dll"), d3d8Dll);
+                break;
         }
     }
 
     private void DownloadGenTool()
     {
-        var modDir = _steamService.GetModDir();
-        var genToolFolder = Path.Combine(modDir, "GenTool");
+        var genToolFolder = Path.Combine(GetModStorageDir(), "GenTool");
         genToolFolder.CreateFolderIfItDoesNotExist();
-        var genToolFile = Path.Combine(genToolFolder, "d3d8.dll");
-        if (Directory.Exists(genToolFolder) && File.Exists(genToolFile))
+        if (File.Exists(Path.Combine(genToolFolder, "d3d8.dll")))
         {
             return;
         }
 
-        // Now download the d3d8.dll file from GitHub
-        using (var client = new HttpClient())
-        {
-            var result = client.GetAsync(GentoolDownloadLink).GetAwaiter().GetResult();
-            var fileData = result.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
-            var filePath = Path.Combine(genToolFolder, "gentool.zip");
-            File.WriteAllBytes(filePath, fileData);
-            ZipFile.ExtractToDirectory(filePath, genToolFolder);
-            File.Delete(filePath);
-        }
+        using var client = new HttpClient();
+        var fileData = client.GetByteArrayAsync(GentoolDownloadLink).GetAwaiter().GetResult();
+        var zipPath = Path.Combine(genToolFolder, "gentool.zip");
+        File.WriteAllBytes(zipPath, fileData);
+        ZipFile.ExtractToDirectory(zipPath, genToolFolder);
+        File.Delete(zipPath);
     }
 }

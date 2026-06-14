@@ -1,99 +1,92 @@
-<div class="container-xl page-container">
-  <div class="row">
-    <div class="col-8">
-      <div class="row">
-        <div class="col">
-          <div class="row">
-            <div class="col-2" *ngIf="!isOnOptionsPage()">
-              <button class="btn btn-outline-primary" (click)="toggleModsView()">{{ getModsButtonText() }}</button>
-            </div>
-            <div class="col-2" *ngIf="isOnOptionsPage()">
-              <button class="btn btn-primary" (click)="goHome()">Return</button>
-            </div>
-            <div class="col-5">
-              <button class="btn btn-outline-primary">Patches for General Zero Hour</button>
-            </div>
-            <div class="col-5">
-              <button class="btn btn-outline-primary">Addons for General Zero Hour</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col">
-          <router-outlet></router-outlet>
-        </div>
-      </div>
+<div class="app-shell">
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-mark"><i class="fa fa-star"></i></div>
+      <div class="brand-text">Gen<span>Launcher</span></div>
     </div>
-    <div class="col-4">
-      <div class="row">
-        <div class="col">
-          <button class="btn btn-outline-primary full-width" (click)="startGame()">Launch Game</button>
+
+    <nav class="game-switcher" *ngIf="detectedGames != null">
+      <button class="game-tab"
+              [class.active]="selectedGame === GameType.Generals"
+              [disabled]="!isDetected(GameType.Generals) || switchingGame"
+              (click)="switchGame(GameType.Generals)"
+              [ngbTooltip]="!isDetected(GameType.Generals) ? 'Generals was not found in your Steam library' : ''">
+        Generals
+      </button>
+      <button class="game-tab"
+              [class.active]="selectedGame === GameType.ZeroHour"
+              [disabled]="!isDetected(GameType.ZeroHour) || switchingGame"
+              (click)="switchGame(GameType.ZeroHour)"
+              [ngbTooltip]="!isDetected(GameType.ZeroHour) ? 'Zero Hour was not found in your Steam library' : ''">
+        Zero Hour
+      </button>
+    </nav>
+
+    <nav class="main-nav">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}"><i class="fa fa-layer-group me-1"></i> My Mods</a>
+      <a routerLink="/add-mod" routerLinkActive="active"><i class="fa fa-plus me-1"></i> Browse</a>
+      <a routerLink="/patches" routerLinkActive="active"><i class="fa fa-bandage me-1"></i> Patches</a>
+      <a routerLink="/options" routerLinkActive="active"><i class="fa fa-gear me-1"></i> Options</a>
+      <a routerLink="/credits" routerLinkActive="active"><i class="fa fa-users me-1"></i> Credits</a>
+    </nav>
+  </header>
+
+  <div class="app-body">
+    <main class="app-content">
+      <router-outlet></router-outlet>
+    </main>
+
+    <aside class="app-sidebar">
+      <button class="btn-launch" (click)="startGame()">
+        <span><i class="fa fa-play me-2"></i>Launch Game</span>
+        <small *ngIf="selectedGame != null">{{ selectedGameName() }}</small>
+      </button>
+
+      <div class="panel">
+        <h6 class="panel-title">Companions</h6>
+        <div class="status-row">
+          <span class="status-icon">
+            <i *ngIf="installationStatus == null" class="fa fa-spin fa-spinner"></i>
+            <i *ngIf="installationStatus != null && installationStatus.genTool" class="fa fa-circle-check text-success"></i>
+            <i *ngIf="installationStatus != null && !installationStatus.genTool" class="fa fa-circle-xmark text-danger"></i>
+          </span>
+          <span>GenTool</span>
+          <button class="btn btn-sm btn-accent" (click)="installGenTool()"
+                  *ngIf="installationStatus != null && !installationStatus.genTool && !installingGenTool">Install</button>
+          <i class="fa fa-spinner fa-spin ms-auto" *ngIf="installingGenTool"></i>
+        </div>
+        <div class="status-row">
+          <span class="status-icon">
+            <i *ngIf="installationStatus == null" class="fa fa-spin fa-spinner"></i>
+            <i *ngIf="installationStatus != null && installationStatus.moddedLauncher" class="fa fa-circle-check text-success"></i>
+            <i *ngIf="installationStatus != null && !installationStatus.moddedLauncher" class="fa fa-circle-xmark text-danger"></i>
+          </span>
+          <span>Modded Launcher</span>
+          <i class="fa fa-circle-info ms-auto text-secondary"
+             ngbTooltip="The modded launcher is installed automatically when a mod is installed"></i>
         </div>
       </div>
-      <div class="row">
-        <div class="col">
-          <button class="btn btn-outline-primary full-width">World Builder</button>
+
+      <div class="panel" *ngIf="modStats != null">
+        <h6 class="panel-title">Stats</h6>
+        <div class="stat-row">
+          <span class="stat-label"><i class="fa fa-circle-down"></i>Installed</span>
+          <span class="stat-value">{{ modStats.installed }}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label"><i class="fa fa-download"></i>Downloaded</span>
+          <span class="stat-value">{{ modStats.downloaded }}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label"><i class="fa fa-hard-drive"></i>Total size</span>
+          <span class="stat-value">{{ modStats.totalSize | byteToGb: 2 }}</span>
         </div>
       </div>
-      <div class="row">
-        <div class="col">
-          <button class="btn btn-outline-primary full-width" (click)="showOptions()">Options</button>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col">
-          <button class="btn btn-outline-primary full-width" (click)="showCredits()">Credits</button>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col">
-          <button class="btn btn-outline-primary full-width">Exit</button>
-        </div>
-      </div>
-      <div class="row">
-        <table>
-          <tr>
-            <td>GenTool</td>
-            <td>
-              <i *ngIf="this.installationStatus == null" class="fa fa-spin fa-spinner"></i>
-              <i *ngIf="this.installationStatus != null && this.installationStatus.genTool" class="fa fa-check text-success"></i>
-              <i *ngIf="this.installationStatus != null && !this.installationStatus.genTool" class="fa fa-times text-danger"></i>
-            </td>
-            <td>
-              <button class="btn btn-success btn-sm" (click)="installGenTool()" *ngIf="!this.installationStatus.genTool && !this.installingGenTool">Install</button>
-              <i class="fa fa-spinner fa-spin" *ngIf="this.installingGenTool"></i>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              Modded Launcher
-            </td>
-            <td>
-              <i *ngIf="this.installationStatus == null" class="fa fa-spin fa-spinner"></i>
-              <i *ngIf="this.installationStatus != null && this.installationStatus.moddedLauncher" class="fa fa-check text-success"></i>
-              <i *ngIf="this.installationStatus != null && !this.installationStatus.moddedLauncher" class="fa fa-times text-danger"></i>
-            </td>
-            <td></td>
-          </tr>
-        </table>
-      </div>
-      <div class="row">
-        <div class="col-3">
-          <span>Config:</span>
-        </div>
-        <div class="col-9">
-          <span>{{ this.configPath }}</span>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col-3">
-          <span>Steam:</span>
-        </div>
-        <div class="col-9">
-          <span>{{ this.steamPath }}</span>
-        </div>
-      </div>
-    </div>
+    </aside>
   </div>
+
+  <footer class="app-statusbar">
+    <span class="path-item" *ngIf="steamPath"><i class="fa fa-folder"></i>Steam: {{ steamPath }}</span>
+    <span class="path-item" *ngIf="configPath"><i class="fa fa-sliders"></i>Config: {{ configPath }}</span>
+  </footer>
 </div>

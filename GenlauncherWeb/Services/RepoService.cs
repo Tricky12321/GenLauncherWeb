@@ -1,6 +1,5 @@
-using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using GenLauncherWeb.Enums;
 using GenLauncherWeb.Models;
 using Microsoft.Extensions.Configuration;
@@ -10,30 +9,30 @@ namespace GenLauncherWeb.Services;
 
 public class RepoService
 {
-    protected readonly string RepoUrl;
-    protected readonly SteamService SteamService;
-    protected ReposModsData _reposModsDataCache;
+    private readonly string _zhRepoUrl;
+    private readonly string _genRepoUrl;
+    private readonly Dictionary<GameType, ReposModsData> _cache = new();
+    private readonly object _lock = new();
 
-
-    public RepoService(IConfiguration configuration, SteamService steamService)
+    public RepoService(IConfiguration configuration)
     {
-        RepoUrl = SteamService.GetGame() == GameType.ZH ? configuration["Repos:ZH"] : configuration["Repos:Gen"];
-        SteamService = steamService;
-        SteamService.GetGeneralsInstallDir();
+        _zhRepoUrl = configuration["Repos:ZH"];
+        _genRepoUrl = configuration["Repos:Gen"];
     }
 
-    public ReposModsData GetRepoData()
+    public ReposModsData GetRepoData(GameType game)
     {
-        if (_reposModsDataCache == null)
+        lock (_lock)
         {
-            SteamService.CreateModsFolder();
-            _reposModsDataCache = (new Deserializer()).Deserialize<ReposModsData>(Extensions.DownloadYaml(RepoUrl));
-            _reposModsDataCache.modDatas = _reposModsDataCache.modDatas.OrderBy(x => x.ModName).ToList();
+            if (!_cache.TryGetValue(game, out var data))
+            {
+                var url = game == GameType.Gen ? _genRepoUrl : _zhRepoUrl;
+                data = new Deserializer().Deserialize<ReposModsData>(Extensions.DownloadYaml(url));
+                data.modDatas = data.modDatas.OrderBy(x => x.ModName).ToList();
+                _cache[game] = data;
+            }
+
+            return data;
         }
-        return _reposModsDataCache;
     }
-
-
-    
-    
 }
