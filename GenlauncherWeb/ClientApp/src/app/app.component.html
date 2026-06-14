@@ -5,22 +5,24 @@
       <div class="brand-text">Gen<span>Launcher</span></div>
     </div>
 
-    <nav class="game-switcher" *ngIf="detectedGames != null">
-      <button class="game-tab"
-              [class.active]="selectedGame === GameType.Generals"
-              [disabled]="!isDetected(GameType.Generals) || switchingGame"
-              (click)="switchGame(GameType.Generals)"
-              [ngbTooltip]="!isDetected(GameType.Generals) ? 'Generals was not found in your Steam library' : ''">
-        Generals
-      </button>
-      <button class="game-tab"
-              [class.active]="selectedGame === GameType.ZeroHour"
-              [disabled]="!isDetected(GameType.ZeroHour) || switchingGame"
-              (click)="switchGame(GameType.ZeroHour)"
-              [ngbTooltip]="!isDetected(GameType.ZeroHour) ? 'Zero Hour was not found in your Steam library' : ''">
-        Zero Hour
-      </button>
-    </nav>
+    @if (detectedGames != null) {
+      <nav class="game-switcher">
+        <button class="game-tab"
+                [class.active]="selectedGame === GameType.Generals"
+                [disabled]="!isDetected(GameType.Generals) || switchingGame"
+                (click)="switchGame(GameType.Generals)"
+                [ngbTooltip]="!isDetected(GameType.Generals) ? 'Generals was not found in your Steam library' : ''">
+          Generals
+        </button>
+        <button class="game-tab"
+                [class.active]="selectedGame === GameType.ZeroHour"
+                [disabled]="!isDetected(GameType.ZeroHour) || switchingGame"
+                (click)="switchGame(GameType.ZeroHour)"
+                [ngbTooltip]="!isDetected(GameType.ZeroHour) ? 'Zero Hour was not found in your Steam library' : ''">
+          Zero Hour
+        </button>
+      </nav>
+    }
 
     <nav class="main-nav">
       <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}"><i class="fa fa-layer-group me-1"></i> My Mods</a>
@@ -39,27 +41,40 @@
     <aside class="app-sidebar">
       <button class="btn-launch" (click)="startGame()">
         <span><i class="fa fa-play me-2"></i>Launch Game</span>
-        <small *ngIf="selectedGame != null">{{ selectedGameName() }}</small>
+        @if (selectedGame != null) {
+          <small>{{ selectedGameName() }}</small>
+        }
       </button>
 
       <div class="panel">
         <h6 class="panel-title">Companions</h6>
         <div class="status-row">
           <span class="status-icon">
-            <i *ngIf="installationStatus == null" class="fa fa-spin fa-spinner"></i>
-            <i *ngIf="installationStatus != null && installationStatus.genTool" class="fa fa-circle-check text-success"></i>
-            <i *ngIf="installationStatus != null && !installationStatus.genTool" class="fa fa-circle-xmark text-danger"></i>
+            @if (installationStatus == null) {
+              <i class="fa fa-spin fa-spinner"></i>
+            } @else if (installationStatus.genTool) {
+              <i class="fa fa-circle-check text-success"></i>
+            } @else {
+              <i class="fa fa-circle-xmark text-danger"></i>
+            }
           </span>
           <span>GenTool</span>
-          <button class="btn btn-sm btn-accent" (click)="installGenTool()"
-                  *ngIf="installationStatus != null && !installationStatus.genTool && !installingGenTool">Install</button>
-          <i class="fa fa-spinner fa-spin ms-auto" *ngIf="installingGenTool"></i>
+          @if (installationStatus != null && !installationStatus.genTool && !installingGenTool) {
+            <button class="btn btn-sm btn-accent" (click)="installGenTool()">Install</button>
+          }
+          @if (installingGenTool) {
+            <i class="fa fa-spinner fa-spin ms-auto"></i>
+          }
         </div>
         <div class="status-row">
           <span class="status-icon">
-            <i *ngIf="installationStatus == null" class="fa fa-spin fa-spinner"></i>
-            <i *ngIf="installationStatus != null && installationStatus.moddedLauncher" class="fa fa-circle-check text-success"></i>
-            <i *ngIf="installationStatus != null && !installationStatus.moddedLauncher" class="fa fa-circle-xmark text-danger"></i>
+            @if (installationStatus == null) {
+              <i class="fa fa-spin fa-spinner"></i>
+            } @else if (installationStatus.moddedLauncher) {
+              <i class="fa fa-circle-check text-success"></i>
+            } @else {
+              <i class="fa fa-circle-xmark text-danger"></i>
+            }
           </span>
           <span>Modded Launcher</span>
           <i class="fa fa-circle-info ms-auto text-secondary"
@@ -67,26 +82,32 @@
         </div>
       </div>
 
-      <div class="panel" *ngIf="modStats != null">
-        <h6 class="panel-title">Stats</h6>
-        <div class="stat-row">
-          <span class="stat-label"><i class="fa fa-circle-down"></i>Installed</span>
-          <span class="stat-value">{{ modStats.installed }}</span>
+      @if (modStats != null) {
+        <div class="panel">
+          <h6 class="panel-title">Stats</h6>
+          <div class="stat-row">
+            <span class="stat-label"><i class="fa fa-circle-down"></i>Installed</span>
+            <span class="stat-value">{{ modStats.installed }}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label"><i class="fa fa-download"></i>Downloaded</span>
+            <span class="stat-value">{{ modStats.downloaded }}</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label"><i class="fa fa-hard-drive"></i>Total size</span>
+            <span class="stat-value">{{ modStats.totalSize | byteToGb: 2 }}</span>
+          </div>
         </div>
-        <div class="stat-row">
-          <span class="stat-label"><i class="fa fa-download"></i>Downloaded</span>
-          <span class="stat-value">{{ modStats.downloaded }}</span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label"><i class="fa fa-hard-drive"></i>Total size</span>
-          <span class="stat-value">{{ modStats.totalSize | byteToGb: 2 }}</span>
-        </div>
-      </div>
+      }
     </aside>
   </div>
 
   <footer class="app-statusbar">
-    <span class="path-item" *ngIf="steamPath"><i class="fa fa-folder"></i>Steam: {{ steamPath }}</span>
-    <span class="path-item" *ngIf="configPath"><i class="fa fa-sliders"></i>Config: {{ configPath }}</span>
+    @if (steamPath) {
+      <span class="path-item"><i class="fa fa-folder"></i>Steam: {{ steamPath }}</span>
+    }
+    @if (configPath) {
+      <span class="path-item"><i class="fa fa-sliders"></i>Config: {{ configPath }}</span>
+    }
   </footer>
 </div>

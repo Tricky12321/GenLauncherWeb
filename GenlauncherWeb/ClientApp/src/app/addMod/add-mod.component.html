@@ -4,42 +4,62 @@
          placeholder="Search mods…" [(ngModel)]="filter">
 </div>
 
-<!-- Loading skeletons -->
-<ng-container *ngIf="mods == null">
+@if (mods == null) {
   <div class="skeleton-card"></div>
   <div class="skeleton-card"></div>
   <div class="skeleton-card"></div>
-</ng-container>
+}
 
-<div class="empty-state" *ngIf="mods != null && filteredMods().length === 0">
-  <i class="fa fa-magnifying-glass"></i>
-  <p *ngIf="filter">No mods match "{{ filter }}".</p>
-  <p *ngIf="!filter">The mod repository is empty.</p>
-</div>
+@if (mods != null && filteredMods().length === 0) {
+  <div class="empty-state">
+    <i class="fa fa-magnifying-glass"></i>
+    @if (filter) {
+      <p>No mods match "{{ filter }}".</p>
+    } @else {
+      <p>The mod repository is empty.</p>
+    }
+  </div>
+}
 
-<div class="mod-card" *ngFor="let mod of filteredMods()">
-  <div class="mod-art">
-    <span class="mod-art-placeholder">{{ mod.modName }}</span>
-  </div>
-  <div class="mod-body">
-    <div class="mod-name">
-      <span class="badge-game" *ngIf="game != null" [class.gen]="game === GameType.Generals">{{ gameDisplayName(game) }}</span>
-      <span class="mod-name-text">{{ mod.modName }}</span>
+@for (mod of filteredMods(); track mod.modName) {
+  <div class="mod-card">
+    <div class="mod-art">
+      <span class="mod-art-placeholder">{{ mod.modName }}</span>
     </div>
-    <div class="mod-meta">
-      <span *ngIf="mod.modPatches?.length"><i class="fa fa-bandage"></i>{{ mod.modPatches.length }} patches</span>
-      <span *ngIf="mod.modAddons?.length"><i class="fa fa-puzzle-piece"></i>{{ mod.modAddons.length }} addons</span>
+    <div class="mod-body">
+      <div class="mod-name">
+        @if (game != null) {
+          <span class="badge-game" [class.gen]="game === GameType.Generals">{{ gameDisplayName(game) }}</span>
+        }
+        <span class="mod-name-text">{{ mod.modName }}</span>
+      </div>
+      <div class="mod-meta">
+        @if (mod.modPatches?.length) {
+          <span><i class="fa fa-bandage"></i>{{ mod.modPatches.length }} patches</span>
+        }
+        @if (mod.modAddons?.length) {
+          <span><i class="fa fa-puzzle-piece"></i>{{ mod.modAddons.length }} addons</span>
+        }
+      </div>
+    </div>
+    <div class="mod-side">
+      <div class="mod-actions">
+        @if (!mod.adding && !mod.added) {
+          <button class="btn btn-sm btn-accent" (click)="addMod(mod)">
+            <i class="fa fa-plus me-1"></i>Add to my mods
+          </button>
+        }
+        @if (mod.adding && !mod.added) {
+          <span class="text-secondary"><i class="fa fa-spin fa-spinner me-1"></i>Adding…</span>
+        }
+        @if (mod.installed) {
+          <span class="badge-status installed">Installed</span>
+        } @else if (mod.downloaded && !mod.installed) {
+          <span class="badge-status ready">Downloaded</span>
+        } @else if (mod.added && !mod.downloaded && !mod.installed) {
+          <span class="badge-status not-downloaded">Added</span>
+        }
+      </div>
     </div>
   </div>
-  <div class="mod-side">
-    <div class="mod-actions">
-      <button class="btn btn-sm btn-accent" (click)="addMod(mod)" *ngIf="!mod.adding && !mod.added">
-        <i class="fa fa-plus me-1"></i>Add to my mods
-      </button>
-      <span *ngIf="mod.adding && !mod.added" class="text-secondary"><i class="fa fa-spin fa-spinner me-1"></i>Adding…</span>
-      <span *ngIf="mod.installed" class="badge-status installed">Installed</span>
-      <span *ngIf="mod.downloaded && !mod.installed" class="badge-status ready">Downloaded</span>
-      <span *ngIf="mod.added && !mod.downloaded && !mod.installed" class="badge-status not-downloaded">Added</span>
-    </div>
-  </div>
-</div>
+}

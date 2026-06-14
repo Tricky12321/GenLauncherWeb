@@ -1,4 +1,6 @@
 using Minio;
+using Minio.ApiEndpoints;
+using Minio.DataModel.Args;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -32,11 +34,12 @@ public class S3StorageService
         current.DateTimeFormat.Calendar = new GregorianCalendar();
         Thread.CurrentThread.CurrentCulture = current;
 
-        MinioClient minioClient;
-        if (string.IsNullOrEmpty(modData.S3HostPublicKey) || string.IsNullOrEmpty(modData.S3HostSecretKey))
-            minioClient = new MinioClient(modData.S3HostLink, _defaultPublicKey, _defaultSecretKey);
-        else
-            minioClient = new MinioClient(modData.S3HostLink, modData.S3HostPublicKey, modData.S3HostSecretKey);
+        var pubKey = string.IsNullOrEmpty(modData.S3HostPublicKey) ? _defaultPublicKey : modData.S3HostPublicKey;
+        var secKey = string.IsNullOrEmpty(modData.S3HostSecretKey) ? _defaultSecretKey : modData.S3HostSecretKey;
+        var minioClient = new MinioClient()
+            .WithEndpoint(modData.S3HostLink)
+            .WithCredentials(pubKey, secKey)
+            .Build();
 
         return GetFilesFromBucket(modData, minioClient);
     }
@@ -70,30 +73,36 @@ public class S3StorageService
         current.DateTimeFormat.Calendar = new GregorianCalendar();
         Thread.CurrentThread.CurrentCulture = current;
 
-        MinioClient minioClient;
-        if (string.IsNullOrEmpty(mod.ModData.S3HostPublicKey) || string.IsNullOrEmpty(mod.ModData.S3HostSecretKey))
-            minioClient = new MinioClient(mod.ModData.S3HostLink, _defaultPublicKey, _defaultSecretKey);
-        else
-            minioClient = new MinioClient(mod.ModData.S3HostLink, mod.ModData.S3HostPublicKey, mod.ModData.S3HostSecretKey);
+        var pubKey = string.IsNullOrEmpty(mod.ModData.S3HostPublicKey) ? _defaultPublicKey : mod.ModData.S3HostPublicKey;
+        var secKey = string.IsNullOrEmpty(mod.ModData.S3HostSecretKey) ? _defaultSecretKey : mod.ModData.S3HostSecretKey;
+        var minioClient = new MinioClient()
+            .WithEndpoint(mod.ModData.S3HostLink)
+            .WithCredentials(pubKey, secKey)
+            .Build();
 
         return GetFilesFromBucket(mod.ModData, minioClient);
     }
 
-    private List<ModificationFileInfo> GetFilesFromBucket(ModData modData, MinioClient minioClient)
+    private List<ModificationFileInfo> GetFilesFromBucket(ModData modData, IMinioClient minioClient)
     {
         var fileList = new List<ModificationFileInfo>();
-        bool finished = false;
+        var args = new ListObjectsArgs()
+            .WithBucket(modData.S3BucketName)
+            .WithPrefix(modData.S3FolderName)
+            .WithRecursive(true);
 
-        var result = minioClient.ListObjectsAsync(modData.S3BucketName, modData.S3FolderName, true);
-
-        result.Subscribe(
-            item => { fileList.Add(new ModificationFileInfo(item.Key.Replace(modData.S3FolderName + '/', ""), item.ETag, item.Size)); },
-            ex => throw new ApiException(502, "Cannot enumerate objects in S3 storage"),
-            () => finished = true);
-
-        while (!finished)
+        try
         {
-            Thread.Sleep(100);
+            Task.Run(async () =>
+            {
+                await foreach (var item in minioClient.ListObjectsEnumAsync(args))
+                    fileList.Add(new ModificationFileInfo(
+                        item.Key.Replace(modData.S3FolderName + '/', ""), item.ETag, item.Size));
+            }).GetAwaiter().GetResult();
+        }
+        catch (Exception ex) when (ex is not ApiException)
+        {
+            throw new ApiException(502, "Cannot enumerate objects in S3 storage");
         }
 
         return fileList;

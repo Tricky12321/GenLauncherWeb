@@ -223,9 +223,9 @@ public static class Extensions
     private static bool ExtractRarFile(string fileName, string destination, bool deleteFile)
     {
         
-        using (RarArchive archive = RarArchive.Open(fileName))
+        using (var archive = RarArchive.OpenArchive(fileName, null))
         {
-            foreach (RarArchiveEntry entry in archive.Entries)
+            foreach (var entry in archive.Entries)
             {
                 if (!entry.IsDirectory)
                 {

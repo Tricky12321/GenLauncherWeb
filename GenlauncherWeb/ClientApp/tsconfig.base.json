@@ -1,15 +1,15 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
+    "ignoreDeprecations": "6.0",
     "baseUrl": "./",
     "outDir": "./dist/out-tsc",
     "sourceMap": true,
     "declaration": false,
-    "downlevelIteration": true,
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
-    "module": "es2020",
-    "moduleResolution": "node",
+    "module": "es2022",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "importHelpers": true,
     "target": "ES2022",

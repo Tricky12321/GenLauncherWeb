@@ -3,103 +3,138 @@
   <a routerLink="/add-mod" class="btn btn-accent btn-sm"><i class="fa fa-plus me-1"></i>Browse mods</a>
 </div>
 
-<!-- Steam not found -->
-<div class="empty-state" *ngIf="steamPathError != null">
-  <i class="fa fa-triangle-exclamation"></i>
-  <p class="mb-1"><strong>Steam installation not found</strong></p>
-  <p class="mb-3">{{ steamPathError }}</p>
-  <a routerLink="/options" class="btn btn-accent btn-sm">Set Steam path in Options</a>
-</div>
-
-<!-- Loading skeletons -->
-<ng-container *ngIf="addedMods == null && steamPathError == null">
-  <div class="skeleton-card"></div>
-  <div class="skeleton-card"></div>
-  <div class="skeleton-card"></div>
-</ng-container>
-
-<!-- Empty list -->
-<div class="empty-state" *ngIf="addedMods != null && addedMods.length === 0 && steamPathError == null">
-  <i class="fa fa-box-open"></i>
-  <p class="mb-3">No mods in your list yet.</p>
-  <a routerLink="/add-mod" class="btn btn-accent"><i class="fa fa-plus me-1"></i>Browse the mod repository</a>
-</div>
-
-<!-- Mod cards -->
-<div class="mod-card" *ngFor="let mod of addedMods" [class.installed]="mod.installed">
-  <div class="mod-art">
-    <img *ngIf="mod.modData?.uiImageSourceLink && !mod.imgFailed"
-         [src]="mod.modData.uiImageSourceLink"
-         (error)="mod.imgFailed = true"
-         alt="{{ mod.modInfo.modName }}">
-    <span class="mod-art-placeholder" *ngIf="!mod.modData?.uiImageSourceLink || mod.imgFailed">{{ mod.modInfo.modName }}</span>
+@if (steamPathError != null) {
+  <div class="empty-state">
+    <i class="fa fa-triangle-exclamation"></i>
+    <p class="mb-1"><strong>Steam installation not found</strong></p>
+    <p class="mb-3">{{ steamPathError }}</p>
+    <a routerLink="/options" class="btn btn-accent btn-sm">Set Steam path in Options</a>
   </div>
+}
 
-  <div class="mod-body">
-    <div class="mod-name">
-      <span class="badge-game" [class.gen]="mod.game === GameType.Generals">{{ gameDisplayName(mod.game) }}</span>
-      <span class="mod-name-text">{{ mod.modInfo.modName }}</span>
-    </div>
-    <div class="mod-meta">
-      <span *ngIf="mod.downloaded"><i class="fa fa-code-branch"></i>{{ mod.downloadedVersion }}</span>
-      <span *ngIf="!mod.downloaded && mod.modData?.version"><i class="fa fa-code-branch"></i>{{ mod.modData.version }} available</span>
-      <span *ngIf="mod.downloaded && mod.totalSize > 0"><i class="fa fa-hard-drive"></i>{{ mod.totalSize | byteToGb: 1 }}</span>
-    </div>
-    <div class="mod-links">
-      <a *ngIf="mod.modData?.modDBLink" [href]="mod.modData.modDBLink" target="_blank" ngbTooltip="ModDB"><i class="fa fa-globe"></i></a>
-      <a *ngIf="mod.modData?.newsLink" [href]="mod.modData.newsLink" target="_blank" ngbTooltip="News"><i class="fa fa-newspaper"></i></a>
-    </div>
+@if (addedMods == null && steamPathError == null) {
+  <div class="skeleton-card"></div>
+  <div class="skeleton-card"></div>
+  <div class="skeleton-card"></div>
+}
+
+@if (addedMods != null && addedMods.length === 0 && steamPathError == null) {
+  <div class="empty-state">
+    <i class="fa fa-box-open"></i>
+    <p class="mb-3">No mods in your list yet.</p>
+    <a routerLink="/add-mod" class="btn btn-accent"><i class="fa fa-plus me-1"></i>Browse the mod repository</a>
   </div>
+}
 
-  <div class="mod-side">
-    <span class="badge-status installed" *ngIf="mod.installed">Installed</span>
-    <span class="badge-status ready" *ngIf="mod.downloaded && !mod.installed">Ready to install</span>
-    <span class="badge-status not-downloaded" *ngIf="!mod.downloaded && !mod.downloading">Not downloaded</span>
+@for (mod of addedMods; track mod.modInfo.modName) {
+  <div class="mod-card" [class.installed]="mod.installed">
+    <div class="mod-art">
+      @if (mod.modData?.uiImageSourceLink && !mod.imgFailed) {
+        <img [src]="mod.modData.uiImageSourceLink"
+             (error)="mod.imgFailed = true"
+             alt="{{ mod.modInfo.modName }}">
+      }
+      @if (!mod.modData?.uiImageSourceLink || mod.imgFailed) {
+        <span class="mod-art-placeholder">{{ mod.modInfo.modName }}</span>
+      }
+    </div>
 
-    <!-- Download progress -->
-    <div class="mod-progress" *ngIf="mod.downloading && downloadingMod === mod">
-      <div class="progress-label">
-        <span><i class="fa fa-download me-1"></i>{{ progressPercentage() }}%</span>
-        <span *ngIf="downloadSpeed">{{ downloadSpeed }}</span>
+    <div class="mod-body">
+      <div class="mod-name">
+        <span class="badge-game" [class.gen]="mod.game === GameType.Generals">{{ gameDisplayName(mod.game) }}</span>
+        <span class="mod-name-text">{{ mod.modInfo.modName }}</span>
       </div>
-      <div class="progress-track">
-        <div class="progress-fill" [style.width.%]="progressPercentage()"></div>
+      <div class="mod-meta">
+        @if (mod.downloaded) {
+          <span><i class="fa fa-code-branch"></i>{{ mod.downloadedVersion }}</span>
+        }
+        @if (!mod.downloaded && mod.modData?.version) {
+          <span><i class="fa fa-code-branch"></i>{{ mod.modData.version }} available</span>
+        }
+        @if (mod.downloaded && mod.totalSize > 0) {
+          <span><i class="fa fa-hard-drive"></i>{{ mod.totalSize | byteToGb: 1 }}</span>
+        }
+      </div>
+      <div class="mod-links">
+        @if (mod.modData?.modDBLink) {
+          <a [href]="mod.modData.modDBLink" target="_blank" ngbTooltip="ModDB"><i class="fa fa-globe"></i></a>
+        }
+        @if (mod.modData?.newsLink) {
+          <a [href]="mod.modData.newsLink" target="_blank" ngbTooltip="News"><i class="fa fa-newspaper"></i></a>
+        }
       </div>
     </div>
 
-    <div class="mod-actions" *ngIf="!mod.downloading && !mod.uninstalling && !mod.deleting && !mod.installing">
-      <button class="btn btn-sm btn-accent" [disabled]="lockButtons"
-              (click)="downloadMod(mod)" *ngIf="!mod.downloaded">
-        <i class="fa fa-download me-1"></i>Download
-      </button>
-      <button class="btn btn-sm btn-accent" [disabled]="lockButtons || anyModInstalled()"
-              (click)="installMod(mod)" *ngIf="mod.downloaded && !mod.installed"
-              [ngbTooltip]="anyModInstalled() ? 'Only 1 mod may be installed at a time' : ''">
-        <i class="fa fa-circle-down me-1"></i>Install
-      </button>
-      <button class="btn btn-sm btn-outline-danger" [disabled]="lockButtons"
-              (click)="uninstallMod(mod)" *ngIf="mod.downloaded && mod.installed">
-        <i class="fa fa-eject me-1"></i>Uninstall
-      </button>
-      <button class="btn btn-sm btn-outline-dim" [disabled]="lockButtons"
-              (click)="deleteMod(mod)" *ngIf="mod.downloaded && !mod.installed"
-              ngbTooltip="Delete the downloaded files">
-        <i class="fa fa-trash"></i>
-      </button>
-      <button class="btn btn-sm btn-outline-dim" [disabled]="lockButtons"
-              (click)="removeMod(mod)" *ngIf="!mod.installed"
-              ngbTooltip="Remove from list">
-        <i class="fa fa-xmark"></i>
-      </button>
+    <div class="mod-side">
+      @if (mod.installed) {
+        <span class="badge-status installed">Installed</span>
+      } @else if (mod.downloaded && !mod.installed) {
+        <span class="badge-status ready">Ready to install</span>
+      } @else if (!mod.downloaded && !mod.downloading) {
+        <span class="badge-status not-downloaded">Not downloaded</span>
+      }
+
+      @if (mod.downloading && downloadingMod === mod) {
+        <div class="mod-progress">
+          <div class="progress-label">
+            <span><i class="fa fa-download me-1"></i>{{ progressPercentage() }}%</span>
+            @if (downloadSpeed) {
+              <span>{{ downloadSpeed }}</span>
+            }
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" [style.width.%]="progressPercentage()"></div>
+          </div>
+        </div>
+      }
+
+      @if (!mod.downloading && !mod.uninstalling && !mod.deleting && !mod.installing) {
+        <div class="mod-actions">
+          @if (!mod.downloaded) {
+            <button class="btn btn-sm btn-accent" [disabled]="lockButtons" (click)="downloadMod(mod)">
+              <i class="fa fa-download me-1"></i>Download
+            </button>
+          }
+          @if (mod.downloaded && !mod.installed) {
+            <button class="btn btn-sm btn-accent" [disabled]="lockButtons || anyModInstalled()"
+                    (click)="installMod(mod)"
+                    [ngbTooltip]="anyModInstalled() ? 'Only 1 mod may be installed at a time' : ''">
+              <i class="fa fa-circle-down me-1"></i>Install
+            </button>
+          }
+          @if (mod.downloaded && mod.installed) {
+            <button class="btn btn-sm btn-outline-danger" [disabled]="lockButtons" (click)="uninstallMod(mod)">
+              <i class="fa fa-eject me-1"></i>Uninstall
+            </button>
+          }
+          @if (mod.downloaded && !mod.installed) {
+            <button class="btn btn-sm btn-outline-dim" [disabled]="lockButtons"
+                    (click)="deleteMod(mod)" ngbTooltip="Delete the downloaded files">
+              <i class="fa fa-trash"></i>
+            </button>
+          }
+          @if (!mod.installed) {
+            <button class="btn btn-sm btn-outline-dim" [disabled]="lockButtons"
+                    (click)="removeMod(mod)" ngbTooltip="Remove from list">
+              <i class="fa fa-xmark"></i>
+            </button>
+          }
+        </div>
+      }
+
+      @if (mod.uninstalling) {
+        <span class="text-secondary"><i class="fa fa-spin fa-spinner me-1"></i>Uninstalling…</span>
+      }
+      @if (mod.deleting) {
+        <span class="text-secondary"><i class="fa fa-spin fa-spinner me-1"></i>Removing…</span>
+      }
+      @if (mod.installing) {
+        <span class="text-secondary"><i class="fa fa-spin fa-spinner me-1"></i>Installing…</span>
+      }
     </div>
-
-    <span *ngIf="mod.uninstalling" class="text-secondary"><i class="fa fa-spin fa-spinner me-1"></i>Uninstalling…</span>
-    <span *ngIf="mod.deleting" class="text-secondary"><i class="fa fa-spin fa-spinner me-1"></i>Removing…</span>
-    <span *ngIf="mod.installing" class="text-secondary"><i class="fa fa-spin fa-spinner me-1"></i>Installing…</span>
   </div>
-</div>
+}
 
-<!-- Confirm dialog -->
 <ng-template #confirmDialog let-modal>
   <div class="modal-header">
     <h5 class="modal-title">{{ confirmTitle }}</h5>

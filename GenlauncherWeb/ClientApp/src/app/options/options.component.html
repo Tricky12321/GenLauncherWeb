@@ -2,11 +2,13 @@
   <h2><i class="fa fa-gear"></i>Options</h2>
 </div>
 
-<div class="loading-spinner" *ngIf="loading">
-  <i class="fa fa-spin fa-spinner"></i>
-</div>
+@if (loading) {
+  <div class="loading-spinner">
+    <i class="fa fa-spin fa-spinner"></i>
+  </div>
+}
 
-<ng-container *ngIf="!loading && launcherOptions">
+@if (!loading && launcherOptions) {
   <div class="option-panel">
     <h6 class="panel-title">Install method</h6>
     <div class="form-check">
@@ -17,9 +19,10 @@
       <label class="form-check-label" for="installMethod-symlink">
         Symlink files (recommended)
       </label>
-      <i class="fa fa-circle-info ms-2"
-         ngbTooltip="Symlinks are not supported on this system. On Windows, try running GenLauncher as Administrator or enable Developer Mode."
-         *ngIf="!isSymlinksSupported"></i>
+      @if (!isSymlinksSupported) {
+        <i class="fa fa-circle-info ms-2"
+           ngbTooltip="Symlinks are not supported on this system. On Windows, try running GenLauncher as Administrator or enable Developer Mode."></i>
+      }
     </div>
     <div class="form-check">
       <input class="form-check-input" type="radio" name="installMethod" [value]="InstallMethod.CopyFiles"
@@ -55,4 +58,4 @@
     <button class="btn btn-accent" (click)="saveOptions()"><i class="fa fa-floppy-disk me-1"></i>Save options</button>
     <button class="btn btn-outline-danger" (click)="resetOptions()">Reset to defaults</button>
   </div>
-</ng-container>
+}
