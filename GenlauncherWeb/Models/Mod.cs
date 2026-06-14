@@ -1,11 +1,12 @@
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.IO;
+using System.Collections.Generic;
+using GenLauncherWeb.Enums;
 
 namespace GenLauncherWeb.Models;
 
 public class Mod
 {
+    public GameType Game { get; set; }
     public bool Installed { get; set; }
     public bool Installing { get; set; }
     public bool Downloading { get; set; }
@@ -37,5 +38,5 @@ public class Mod
     public List<string> DownloadedFiles { get; set; }
 
     [NotMapped] private ModData _modData { get; set; }
-    
+
 }

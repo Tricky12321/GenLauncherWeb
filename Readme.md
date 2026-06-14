@@ -55,9 +55,9 @@ electronize build /target ["win" | "osx" | "linux"] /electron-arch ["ia32" | "x6
 # Before a first release, the following need to be solved/implemented:
 - [x] Implement base install method using symbolic links
 - [x] Implement base install method using copy/move (for non symlink systems)
-- [ ] Implement install for Generals
+- [x] Implement install for Generals
 - [x] Implement install for Zero Hour
-- [ ] Implement a way to detect games (Both ZH and Gen)
+- [x] Implement a way to detect games (Both ZH and Gen)
 - [x] Implement a way to download from S3
 - [x] Implement a way to download from Onedrive
 - [x] Implement a way to download from Dropbox
@@ -65,7 +65,7 @@ electronize build /target ["win" | "osx" | "linux"] /electron-arch ["ia32" | "x6
 ## Optional nice-to-have
 - [ ] Language translations
 - [x] Implement actual download percentage
-- [ ] Show download speed
+- [x] Show download speed
 - [ ] Able to change steam game launch options
 
 
@@ -79,5 +79,9 @@ GenLauncher by p0ls3r [GenLauncher](https://github.com/p0ls3r/GenLauncher) | [Di
 
 # Documentation
 
-All files are downloaded inside the game folder in steam, and placed inside a "mods" folder. 
-From here all files will either be copied or symlinked into the main game folder.
+The full specification lives in the [docs](docs/README.md) folder.
+
+In short: mods are downloaded into a launcher-managed `GenLauncherMods` folder next to the
+game folders (inside Steam's `steamapps/common`). From there the files are either copied or
+symlinked into the game folder of the selected game (Generals or Zero Hour). Original game
+files that get displaced are backed up per game and restored on uninstall.

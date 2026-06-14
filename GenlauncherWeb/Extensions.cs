@@ -78,6 +78,15 @@ public static class Extensions
         return !string.IsNullOrEmpty(mod.ModData.S3HostLink) && !string.IsNullOrEmpty(mod.ModData.S3FolderName) && !string.IsNullOrEmpty(mod.ModData.S3BucketName);
     }
 
+    public static ModData DownloadModDataFromUrl(string url)
+    {
+        var yaml = DownloadYaml(url);
+        var deserializer = new DeserializerBuilder()
+            .IgnoreUnmatchedProperties()
+            .Build();
+        return deserializer.Deserialize<ModData>(yaml);
+    }
+
     public static string CleanString(this string input)
     {
         // Remove non-ASCII characters
@@ -112,17 +121,6 @@ public static class Extensions
                 return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
             }
         }
-    }
-
-    public static bool UninstallMod(this Mod mod)
-    {
-        Directory.Delete(mod.ModDir, true);
-        mod.ModDir = "";
-        mod.TotalSize = 0;
-        mod.DownloadedFiles = new List<string>();
-        mod.DownloadedVersion = "";
-        mod.Installed = false;
-        return true;
     }
 
     public static string EscapeLinuxPath(this string path)

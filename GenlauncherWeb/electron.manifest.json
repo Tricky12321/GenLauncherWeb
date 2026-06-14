@@ -8,8 +8,8 @@
   "singleInstance": false,
   "environment": "Production",
   "build": {
-    "appId": "com.GenlauncherWeb.app",
-    "productName": "GenlauncherWeb",
+    "appId": "com.genlauncher.app",
+    "productName": "GenLauncher",
     "copyright": "Copyright © 2024",
     "buildVersion": "0.0.1",
     "compression": "maximum",
@@ -30,6 +30,30 @@
         "filter": [ "**/*" ]
       },
       "**/*"
-    ]
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "linux": {
+      "category": "Game",
+      "target": [{ "target": "flatpak", "arch": ["x64"] }]
+    },
+    "flatpak": {
+      "baseVersion": "24.08",
+      "runtimeVersion": "24.08"
+    },
+    "mac": {
+      "category": "public.app-category.games",
+      "target": [
+        { "target": "dmg", "arch": ["x64"] },
+        { "target": "dmg", "arch": ["arm64"] }
+      ]
+    }
   }
 }

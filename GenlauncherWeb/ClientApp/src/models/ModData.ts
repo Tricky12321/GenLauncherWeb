@@ -9,6 +9,8 @@ export interface ModData {
   discordLink: string;
   modDBLink: string;
   newsLink: string;
+  supportLink?: string;
+  networkInfo?: string;
   dependenceName: string;
   s3HostLink: string;
   s3BucketName: string;

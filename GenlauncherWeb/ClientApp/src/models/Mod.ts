@@ -1,7 +1,9 @@
 import {ModAddonsAndPatches} from "./ModAddonsAndPatches";
 import {ModData} from "./ModData";
+import {GameType} from "./GameType";
 
 export interface Mod {
+  game: GameType;
   selected: boolean;
   downloaded: boolean;
   installed: boolean;
@@ -16,4 +18,5 @@ export interface Mod {
   installing: boolean;
   deleting: boolean;
   uninstalling: boolean;
+  imgFailed?: boolean;
 }

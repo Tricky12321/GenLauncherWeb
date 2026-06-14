@@ -1,6 +1,5 @@
-using System;
 using System.Diagnostics;
-using System.IO;
+using GenLauncherWeb.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GenLauncherWeb.Controllers;
@@ -8,18 +7,19 @@ namespace GenLauncherWeb.Controllers;
 [Route("api/[controller]")]
 public class GameController : ControllerBase
 {
+    private readonly OptionsService _optionsService;
+
+    public GameController(OptionsService optionsService)
+    {
+        _optionsService = optionsService;
+    }
+
     [HttpGet("start")]
     public IActionResult StartGame()
     {
-        string homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-
-        string workdir = Path.Combine(homeDirectory, ".steam/steam/steamapps/common/Command & Conquer Generals - Zero Hour");
-        string arguments = "steam://rungameid/2732960";
-        // Construct the steam URL
-
-        // Use Process.Start to run the URL
-        Process.Start(new ProcessStartInfo(arguments) { UseShellExecute = true });
-
+        var game = _optionsService.GetOptions().SelectedGame;
+        var steamUrl = $"steam://rungameid/{SteamService.GetAppId(game)}";
+        Process.Start(new ProcessStartInfo(steamUrl) { UseShellExecute = true });
         return Ok();
     }
 }

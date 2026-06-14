@@ -60,9 +60,6 @@ public class ModData : ModificationReposVersion, IComparable
         if (!String.IsNullOrEmpty(otherModData.SupportLink) && String.IsNullOrEmpty(this.SupportLink))
             this.SupportLink = otherModData.SupportLink;
 
-        if (!String.IsNullOrEmpty(otherModData.SupportLink) && String.IsNullOrEmpty(this.SupportLink))
-            this.NetworkInfo = otherModData.SupportLink;
-
         if (!String.IsNullOrEmpty(otherModData.S3BucketName) && String.IsNullOrEmpty(this.S3BucketName))
             this.S3BucketName = otherModData.S3BucketName;
 

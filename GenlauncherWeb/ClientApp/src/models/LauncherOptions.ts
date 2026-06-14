@@ -1,7 +1,10 @@
+import {GameType} from "./GameType";
+
 export class LauncherOptions {
 
   public installMethod: InstallMethod;
   public steamPath: string;
+  public selectedGame: GameType;
 }
 
 export enum InstallMethod {
