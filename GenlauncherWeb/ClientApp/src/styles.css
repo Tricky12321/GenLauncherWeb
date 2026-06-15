@@ -717,3 +717,34 @@ body {
   background: #3d4630;
 }
 
+
+/* Lightweight tooltip (replaces @ng-bootstrap/ng-bootstrap NgbTooltip) */
+.app-tooltip {
+  background: #1b1f17;
+  color: #e8eadf;
+  border: 1px solid #3d4630;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  max-width: 260px;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Confirm dialog (replaces @ng-bootstrap/ng-bootstrap NgbModal) */
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+}
+.confirm-dialog {
+  background: #20251b;
+  border: 1px solid #3d4630;
+  border-radius: 8px;
+  width: min(440px, 92vw);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}

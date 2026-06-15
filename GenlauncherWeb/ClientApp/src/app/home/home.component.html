@@ -135,16 +135,20 @@
   </div>
 }
 
-<ng-template #confirmDialog let-modal>
-  <div class="modal-header">
-    <h5 class="modal-title">{{ confirmTitle }}</h5>
-    <button type="button" class="btn-close" aria-label="Close" (click)="modal.dismiss()"></button>
+@if (confirmOpen) {
+  <div class="confirm-backdrop" (click)="cancelConfirm()">
+    <div class="confirm-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ confirmTitle }}</h5>
+        <button type="button" class="btn-close" aria-label="Close" (click)="cancelConfirm()"></button>
+      </div>
+      <div class="modal-body">
+        {{ confirmMessage }}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-dim" (click)="cancelConfirm()">Cancel</button>
+        <button type="button" class="btn btn-danger" (click)="confirm()">{{ confirmButton }}</button>
+      </div>
+    </div>
   </div>
-  <div class="modal-body">
-    {{ confirmMessage }}
-  </div>
-  <div class="modal-footer">
-    <button type="button" class="btn btn-outline-dim" (click)="modal.dismiss()">Cancel</button>
-    <button type="button" class="btn btn-danger" (click)="confirm(modal)">{{ confirmButton }}</button>
-  </div>
-</ng-template>
+}

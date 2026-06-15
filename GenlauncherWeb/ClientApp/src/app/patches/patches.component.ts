@@ -1,5 +1,8 @@
-import {Component, OnDestroy, OnInit} from '@angular/core';
+import {Component, DestroyRef, OnInit} from '@angular/core';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {Subscription} from 'rxjs';
 import {PatchService} from "../../services/patch.service";
+import {ProgressPollingService} from "../../services/progress-polling.service";
 import {GamePatch} from "../../models/GamePatch";
 import {ModDownloadProgress} from "../../models/ModDownloadProgress";
 import {ToastrService} from "ngx-toastr";
@@ -11,23 +14,22 @@ import {errorMessage} from "../util";
   styleUrls: ['./patches.component.css'],
   standalone: false
 })
-export class PatchesComponent implements OnInit, OnDestroy {
+export class PatchesComponent implements OnInit {
   public patches: GamePatch[] | null = null;
   public loading: boolean = true;
 
   public downloadProgress: { [patchUrl: string]: ModDownloadProgress } = {};
   public downloadSpeed: { [patchUrl: string]: string } = {};
-  private pollTimers: { [patchUrl: string]: any } = {};
+  private pollSubs: { [patchUrl: string]: Subscription } = {};
   private lastSamples: { [patchUrl: string]: { bytes: number, time: number } } = {};
 
-  constructor(private patchService: PatchService, private toastr: ToastrService) {}
+  constructor(private patchService: PatchService,
+              private polling: ProgressPollingService,
+              private destroyRef: DestroyRef,
+              private toastr: ToastrService) {}
 
   ngOnInit(): void {
     this.load();
-  }
-
-  ngOnDestroy(): void {
-    Object.values(this.pollTimers).forEach(t => clearTimeout(t));
   }
 
   load() {
@@ -58,6 +60,7 @@ export class PatchesComponent implements OnInit, OnDestroy {
         patch.downloaded = true;
         patch._loadingDownload = false;
         patch._downloadPollActive = false;
+        this.pollSubs[patch.patchUrl]?.unsubscribe();
         delete this.downloadProgress[patch.patchUrl];
         delete this.downloadSpeed[patch.patchUrl];
       },
@@ -65,6 +68,7 @@ export class PatchesComponent implements OnInit, OnDestroy {
         this.toastr.error(errorMessage(err), 'Download failed');
         patch._loadingDownload = false;
         patch._downloadPollActive = false;
+        this.pollSubs[patch.patchUrl]?.unsubscribe();
         delete this.downloadProgress[patch.patchUrl];
         delete this.downloadSpeed[patch.patchUrl];
       }
@@ -74,21 +78,17 @@ export class PatchesComponent implements OnInit, OnDestroy {
   }
 
   private pollProgress(patch: GamePatch) {
-    this.patchService.getProgress(patch.patchUrl).subscribe({
-      next: progress => {
+    this.pollSubs[patch.patchUrl]?.unsubscribe();
+    this.pollSubs[patch.patchUrl] = this.polling
+      .poll(
+        () => this.patchService.getProgress(patch.patchUrl),
+        progress => progress.downloaded || !patch._downloadPollActive)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(progress => {
         if (!patch._downloadPollActive) return;
         this.downloadProgress[patch.patchUrl] = progress;
         this.updateSpeed(patch.patchUrl, progress);
-        if (!progress.downloaded) {
-          this.pollTimers[patch.patchUrl] = setTimeout(() => this.pollProgress(patch), 500);
-        }
-      },
-      error: () => {
-        if (patch._downloadPollActive) {
-          this.pollTimers[patch.patchUrl] = setTimeout(() => this.pollProgress(patch), 1000);
-        }
-      }
-    });
+      });
   }
 
   private updateSpeed(patchUrl: string, progress: ModDownloadProgress) {

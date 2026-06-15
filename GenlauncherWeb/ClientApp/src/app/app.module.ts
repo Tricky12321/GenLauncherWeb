@@ -1,5 +1,4 @@
 import {BrowserModule} from '@angular/platform-browser';
-import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {NgModule} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {HttpClientModule} from '@angular/common/http';
@@ -9,7 +8,7 @@ import {AppComponent} from './app.component';
 import {HomeComponent} from './home/home.component';
 import {ToastrModule} from "ngx-toastr";
 import {AddModComponent} from "./addMod/add-mod.component";
-import {NgbTooltip} from "@ng-bootstrap/ng-bootstrap";
+import {TooltipDirective} from "./tooltip.directive";
 import {ByteToMbPipe} from "../pipes/ByteToMb.pipe";
 import {ByteToGbPipe} from "../pipes/ByteToGb.pipe";
 import {OptionsComponent} from "./options/options.component";
@@ -23,13 +22,15 @@ import {PatchesComponent} from "./patches/patches.component";
     AddModComponent,
     OptionsComponent,
     CreditsComponent,
-    PatchesComponent
+    PatchesComponent,
+    TooltipDirective
   ],
   imports: [
     BrowserModule,
-    BrowserAnimationsModule,
     HttpClientModule,
     FormsModule,
+    // ngx-toastr v20 animates with CSS, so @angular/animations / BrowserAnimationsModule
+    // is no longer needed.
     ToastrModule.forRoot({
       positionClass: 'toast-bottom-right',
       timeOut: 4000,
@@ -42,7 +43,6 @@ import {PatchesComponent} from "./patches/patches.component";
         {path: 'credits', component: CreditsComponent, pathMatch: 'full'},
       ],
     ),
-    NgbTooltip,
     ByteToMbPipe,
     ByteToGbPipe
   ],

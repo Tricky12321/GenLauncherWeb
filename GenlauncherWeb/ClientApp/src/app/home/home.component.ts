@@ -1,10 +1,12 @@
-import {Component, OnDestroy, OnInit, TemplateRef, ViewChild} from '@angular/core';
+import {Component, DestroyRef, OnInit} from '@angular/core';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {Subscription} from 'rxjs';
 import {GeneralService} from "../../services/general.service";
 import {AppStateService} from "../../services/app-state.service";
+import {ProgressPollingService} from "../../services/progress-polling.service";
 import {Mod} from "../../models/Mod";
 import {ModDownloadProgress} from "../../models/ModDownloadProgress";
 import {ToastrService} from 'ngx-toastr';
-import {NgbModal} from "@ng-bootstrap/ng-bootstrap";
 import {errorMessage} from "../util";
 import {GameType, gameDisplayName} from "../../models/GameType";
 
@@ -14,7 +16,7 @@ import {GameType, gameDisplayName} from "../../models/GameType";
     styleUrls: ['./home.component.css'],
     standalone: false
 })
-export class HomeComponent implements OnInit, OnDestroy {
+export class HomeComponent implements OnInit {
   public addedMods: Mod[] | null = null;
   public steamPathError: string | null = null;
   public lockButtons: boolean = false;
@@ -23,33 +25,27 @@ export class HomeComponent implements OnInit, OnDestroy {
   public downloadProgress: ModDownloadProgress | null = null;
   public downloadSpeed: string | null = null;
 
+  public confirmOpen: boolean = false;
   public confirmTitle: string = '';
   public confirmMessage: string = '';
   public confirmButton: string = 'Confirm';
   private confirmAction: (() => void) | null = null;
 
-  @ViewChild('confirmDialog') confirmDialog: TemplateRef<any>;
-
   protected readonly GameType = GameType;
   protected readonly gameDisplayName = gameDisplayName;
 
-  private pollTimer: any = null;
+  private pollSub: Subscription | null = null;
   private lastSample: { bytes: number, time: number } | null = null;
 
   constructor(public generalService: GeneralService,
               private appState: AppStateService,
-              private modalService: NgbModal,
+              private polling: ProgressPollingService,
+              private destroyRef: DestroyRef,
               public toastrService: ToastrService) {
   }
 
   ngOnInit(): void {
     this.load();
-  }
-
-  ngOnDestroy(): void {
-    if (this.pollTimer != null) {
-      clearTimeout(this.pollTimer);
-    }
   }
 
   load() {
@@ -117,32 +113,26 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.downloadProgress = null;
     this.downloadSpeed = null;
     this.lastSample = null;
-    if (this.pollTimer != null) {
-      clearTimeout(this.pollTimer);
-      this.pollTimer = null;
-    }
+    this.pollSub?.unsubscribe();
+    this.pollSub = null;
     this.appState.refreshStatus();
     this.fetchMods();
   }
 
   private pollProgress(mod: Mod) {
-    this.generalService.getModDownloadProgress(mod.cleanedModName).subscribe({
-      next: progress => {
+    this.pollSub?.unsubscribe();
+    this.pollSub = this.polling
+      .poll(
+        () => this.generalService.getModDownloadProgress(mod.cleanedModName),
+        progress => progress.downloaded || !mod.downloading)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(progress => {
         if (!mod.downloading) {
           return;
         }
         this.downloadProgress = progress;
         this.updateSpeed(progress);
-        if (!progress.downloaded) {
-          this.pollTimer = setTimeout(() => this.pollProgress(mod), 500);
-        }
-      },
-      error: () => {
-        if (mod.downloading) {
-          this.pollTimer = setTimeout(() => this.pollProgress(mod), 1000);
-        }
-      }
-    });
+      });
   }
 
   private updateSpeed(progress: ModDownloadProgress) {
@@ -260,11 +250,16 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.confirmMessage = message;
     this.confirmButton = button;
     this.confirmAction = action;
-    this.modalService.open(this.confirmDialog, {centered: true});
+    this.confirmOpen = true;
   }
 
-  confirm(modal: any) {
-    modal.close();
+  cancelConfirm() {
+    this.confirmOpen = false;
+    this.confirmAction = null;
+  }
+
+  confirm() {
+    this.confirmOpen = false;
     if (this.confirmAction != null) {
       this.confirmAction();
       this.confirmAction = null;

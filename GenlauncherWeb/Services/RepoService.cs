@@ -27,7 +27,7 @@ public class RepoService
             if (!_cache.TryGetValue(game, out var data))
             {
                 var url = game == GameType.Gen ? _genRepoUrl : _zhRepoUrl;
-                data = new Deserializer().Deserialize<ReposModsData>(Extensions.DownloadYaml(url));
+                data = new Deserializer().Deserialize<ReposModsData>(MetadataDownloader.DownloadYaml(url));
                 data.modDatas = data.modDatas.OrderBy(x => x.ModName).ToList();
                 _cache[game] = data;
             }

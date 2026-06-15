@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using ElectronNET.API;
 using ElectronNET.API.Entities;
 using GenLauncherWeb.Middleware;
@@ -15,6 +16,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace GenLauncherWeb
@@ -36,9 +38,16 @@ namespace GenLauncherWeb
             services.AddSingleton<SteamService>();
             services.AddSingleton<RepoService>();
             services.AddSingleton<S3StorageService>();
+            services.AddSingleton<IGamePaths, GamePaths>();
             services.AddSingleton<ModService>();
             services.AddSingleton<OptionsService>();
             services.AddSingleton<PatchService>();
+
+            // Pooled HTTP clients (avoids socket exhaustion from new HttpClient() per call).
+            // The "download" client allows the long transfers mods/patches need.
+            services.AddHttpClient();
+            services.AddHttpClient("download", client => client.Timeout = TimeSpan.FromHours(2));
+
             services.AddElectron();
             services.AddMvc(options => options.EnableEndpointRouting = false);
             services.AddControllers()
@@ -59,8 +68,11 @@ namespace GenLauncherWeb
             services.AddControllersWithViews();
         }
 
+        private Process _spaDevServerProcess;
+
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IHostApplicationLifetime lifetime)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IHostApplicationLifetime lifetime,
+            ILogger<Startup> logger)
         {
             if (env.EnvironmentName == "Development")
             {
@@ -105,7 +117,9 @@ namespace GenLauncherWeb
                             FileName = "ng", Arguments = $"serve --port {port}", WorkingDirectory = angularProjectPath, UseShellExecute = true,
                         };
 
-                        Process process = Process.Start(psi);
+                        _spaDevServerProcess = Process.Start(psi);
+                        // Make sure the spawned `ng serve` is torn down with the app
+                        lifetime.ApplicationStopping.Register(StopSpaDevServer);
                         spa.UseProxyToSpaDevelopmentServer("http://localhost:" + port);
                     }
                 }
@@ -135,7 +149,9 @@ namespace GenLauncherWeb
                                   ?? addressFeature?.Addresses.FirstOrDefault()
                                   ?? "http://localhost:8002";
                     address = address.Replace("0.0.0.0", "localhost").Replace("[::]", "localhost").Replace("*", "localhost");
-                    ElectronBootstrap(address);
+                    // Fire-and-forget, but exceptions are observed inside the task rather
+                    // than crashing the process as an unobserved async void would.
+                    _ = ElectronBootstrapAsync(address, logger);
                 });
             }
         }
@@ -173,41 +189,63 @@ namespace GenLauncherWeb
                 .Any(p => p.Port == port);
         }
 
-        public async void ElectronBootstrap(string appUrl)
+        private void StopSpaDevServer()
         {
-            BrowserWindowOptions options = new BrowserWindowOptions
+            try
             {
-                Show = false,
-                Width = 1200,
-                Height = 800,
-                Fullscreen = false,
-            };
-
-            BrowserWindow mainWindow = await Electron.WindowManager.CreateWindowAsync(options, appUrl);
-            mainWindow.OnReadyToShow += () => { mainWindow.Show(); };
-            mainWindow.SetTitle("GenLauncher");
-            MenuItem[] menu = new MenuItem[]
-            {
-                new MenuItem
+                if (_spaDevServerProcess is { HasExited: false })
                 {
-                    Label = "File",
-                    Submenu = new MenuItem[]
-                    {
-                        new MenuItem
-                        {
-                            Label = "Exit",
-                            Click = () => { Electron.App.Exit(); }
-                        }
-                    }
-                },
-                new MenuItem
-                {
-                    Label = "Info",
-                    Click = async () => { await Electron.Dialog.ShowMessageBoxAsync("Welcome to App"); }
+                    _spaDevServerProcess.Kill(entireProcessTree: true);
                 }
-            };
+            }
+            catch
+            {
+                // Best effort: the dev server may already be gone.
+            }
+        }
 
-            Electron.Menu.SetApplicationMenu(menu);
+        private static async Task ElectronBootstrapAsync(string appUrl, ILogger logger)
+        {
+            try
+            {
+                BrowserWindowOptions options = new BrowserWindowOptions
+                {
+                    Show = false,
+                    Width = 1200,
+                    Height = 800,
+                    Fullscreen = false,
+                };
+
+                BrowserWindow mainWindow = await Electron.WindowManager.CreateWindowAsync(options, appUrl);
+                mainWindow.OnReadyToShow += () => { mainWindow.Show(); };
+                mainWindow.SetTitle("GenLauncher");
+                MenuItem[] menu = new MenuItem[]
+                {
+                    new MenuItem
+                    {
+                        Label = "File",
+                        Submenu = new MenuItem[]
+                        {
+                            new MenuItem
+                            {
+                                Label = "Exit",
+                                Click = () => { Electron.App.Exit(); }
+                            }
+                        }
+                    },
+                    new MenuItem
+                    {
+                        Label = "Info",
+                        Click = async () => { await Electron.Dialog.ShowMessageBoxAsync("Welcome to App"); }
+                    }
+                };
+
+                Electron.Menu.SetApplicationMenu(menu);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to bootstrap the Electron window");
+            }
         }
     }
 }

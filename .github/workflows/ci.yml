@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [master, development]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (build + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # The 7z extraction tests build a 7z archive via the CLI; without it they self-skip.
+      - name: Install 7z
+        run: sudo apt-get update && sudo apt-get install -y p7zip-full
+
+      - name: Restore
+        run: dotnet restore GenlauncherWeb.sln
+
+      - name: Build
+        run: dotnet build GenlauncherWeb.sln --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test GenlauncherWeb.Tests/GenlauncherWeb.Tests.csproj --no-build --configuration Release --logger "console;verbosity=normal"
+
+  frontend:
+    name: Frontend (build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: GenlauncherWeb/ClientApp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: GenlauncherWeb/ClientApp/.nvmrc
+          cache: npm
+          cache-dependency-path: GenlauncherWeb/ClientApp/package-lock.json
+
+      # Several Angular-ecosystem libraries (ngx-toastr) still peer-target Angular 21,
+      # so --legacy-peer-deps is required on Angular 22 until they catch up.
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build
+        run: npm run build

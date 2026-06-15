@@ -43,7 +43,7 @@ public class SymLinkTests
         var file = Path.Combine(_tempDir, "plain.txt");
         File.WriteAllText(file, "content");
 
-        Extensions.IsSymbolicLink(file).Should().BeFalse();
+        FileSystemExtensions.IsSymbolicLink(file).Should().BeFalse();
     }
 
     [Test]
@@ -57,7 +57,7 @@ public class SymLinkTests
         File.WriteAllText(source, "x");
         File.CreateSymbolicLink(link, source);
 
-        Extensions.IsSymbolicLink(link).Should().BeTrue();
+        FileSystemExtensions.IsSymbolicLink(link).Should().BeTrue();
     }
 
     // -------------------------------------------------------------- CreateSymbolicLink
@@ -77,7 +77,7 @@ public class SymLinkTests
         result.Should().BeTrue();
         File.Exists(link).Should().BeTrue();
         File.ReadAllText(link).Should().Be("game mod content");
-        Extensions.IsSymbolicLink(link).Should().BeTrue();
+        FileSystemExtensions.IsSymbolicLink(link).Should().BeTrue();
     }
 
     [Test]

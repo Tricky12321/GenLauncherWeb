@@ -20,12 +20,20 @@ public class S3StorageService
     // GenLauncher), used when a mod's repo data carries no credentials of its own.
     private readonly string _defaultPublicKey;
     private readonly string _defaultSecretKey;
+    private readonly IHttpClientFactory _httpClientFactory;
 
-    public S3StorageService(IConfiguration configuration)
+    private const string DownloadClientName = "download";
+
+    public S3StorageService(IConfiguration configuration, IHttpClientFactory httpClientFactory = null)
     {
         _defaultPublicKey = configuration["Extra:DefaultS3PublicKey"];
         _defaultSecretKey = configuration["Extra:DefaultS3SecretKey"];
+        _httpClientFactory = httpClientFactory;
     }
+
+    private HttpClient CreateDownloadClient()
+        => _httpClientFactory?.CreateClient(DownloadClientName)
+           ?? new HttpClient { Timeout = TimeSpan.FromHours(2) };
 
     public List<ModificationFileInfo> GetFilesForModData(ModData modData)
     {
@@ -49,8 +57,7 @@ public class S3StorageService
         var downloadUrl = string.Format("https://{0}/{1}/{2}/{3}", modData.S3HostLink.Split(':')[0],
             modData.S3BucketName, modData.S3FolderName, filename);
 
-        using var client = new HttpClient();
-        client.Timeout = TimeSpan.FromHours(2);
+        var client = CreateDownloadClient();
         using var response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
         if (!response.IsSuccessStatusCode)
             throw new ApiException(502, "Failed to download file: " + filename);
@@ -117,8 +124,7 @@ public class S3StorageService
         var downloadUrl = string.Format("https://{0}/{1}/{2}/{3}", mod.ModData.S3HostLink.Split(':')[0],
             mod.ModData.S3BucketName, mod.ModData.S3FolderName, filename);
 
-        using var client = new HttpClient();
-        client.Timeout = TimeSpan.FromHours(2);
+        var client = CreateDownloadClient();
         using var response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
         if (!response.IsSuccessStatusCode)
         {

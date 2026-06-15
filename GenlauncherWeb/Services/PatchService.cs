@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using GenLauncherWeb.Enums;
 using GenLauncherWeb.Middleware;
 using GenLauncherWeb.Models;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace GenLauncherWeb.Services;
@@ -16,21 +17,26 @@ public class PatchService
 {
     private readonly RepoService _repoService;
     private readonly S3StorageService _s3StorageService;
-    private readonly ModService _modService;
     private readonly OptionsService _optionsService;
+    private readonly IGamePaths _gamePaths;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<PatchService> _logger;
 
     private readonly object _lock = new();
     private readonly Dictionary<GameType, List<GamePatch>> _patchLists = new();
     private readonly ConcurrentDictionary<string, ModDownloadProgress> _downloadProgress = new();
 
-    private const string BackupDir = "Patches";
+    private const string DownloadClientName = "download";
 
-    public PatchService(RepoService repoService, S3StorageService s3StorageService, ModService modService, OptionsService optionsService)
+    public PatchService(RepoService repoService, S3StorageService s3StorageService, OptionsService optionsService,
+        IGamePaths gamePaths, IHttpClientFactory httpClientFactory, ILogger<PatchService> logger)
     {
         _repoService = repoService;
         _s3StorageService = s3StorageService;
-        _modService = modService;
         _optionsService = optionsService;
+        _gamePaths = gamePaths;
+        _httpClientFactory = httpClientFactory;
+        _logger = logger;
     }
 
     // ---------------------------------------------------------------- paths
@@ -39,19 +45,16 @@ public class PatchService
 
     private string GetPatchListFilePath(GameType game)
     {
-        var dir = _modService.GetModStorageDir();
-        var fileName = game == GameType.Gen ? "genlauncher_patches_gen.json" : "genlauncher_patches_zh.json";
-        return Path.Combine(dir, fileName);
+        return Path.Combine(_gamePaths.ModStorageDir, StorageNames.PatchListFile(game));
     }
 
     private string GetPatchStorageDir(string cleanedPatchName)
-        => Path.Combine(_modService.GetModStorageDir(), "Patches", cleanedPatchName);
+        => Path.Combine(_gamePaths.ModStorageDir, StorageNames.PatchesDir, cleanedPatchName);
 
     private string GetPatchBackupDir(GameType game, string cleanedPatchName)
-        => Path.Combine(_modService.GetModStorageDir(), ModService.BackupOriginalGameFilesDir, game.ToString(), BackupDir, cleanedPatchName);
+        => Path.Combine(_gamePaths.ModStorageDir, StorageNames.OriginalGameFilesDir, game.ToString(), StorageNames.PatchesDir, cleanedPatchName);
 
-    private string GetGameDir(GameType game)
-        => SteamService.GetGameInstallDir(game, _optionsService.GetOptions().SteamPath);
+    private string GetGameDir(GameType game) => _gamePaths.GameDir(game);
 
     // ---------------------------------------------------------------- list
 
@@ -96,7 +99,7 @@ public class PatchService
                 GamePatch patch;
                 try
                 {
-                    var data = Extensions.DownloadModDataFromUrl(url);
+                    var data = MetadataDownloader.DownloadModDataFromUrl(url);
                     patch = new GamePatch
                     {
                         PatchUrl = url,
@@ -106,8 +109,9 @@ public class PatchService
                         PatchData = data
                     };
                 }
-                catch
+                catch (Exception ex)
                 {
+                    _logger.LogWarning(ex, "Could not load patch metadata from {PatchUrl}", url);
                     patch = new GamePatch { PatchUrl = url, Name = url };
                 }
 
@@ -148,7 +152,7 @@ public class PatchService
             // Ensure we have the YAML data (may have been loaded without it on a previous run)
             if (patch.PatchData == null)
             {
-                patch.PatchData = Extensions.DownloadModDataFromUrl(patchUrl);
+                patch.PatchData = MetadataDownloader.DownloadModDataFromUrl(patchUrl);
                 patch.Name = patch.PatchData.Name ?? patch.Name;
                 patch.Version = patch.PatchData.Version;
                 patch.UIImageSourceLink = patch.PatchData.UIImageSourceLink;
@@ -173,8 +177,9 @@ public class PatchService
             if (_downloadProgress.TryGetValue(progressKey, out var prog))
                 prog.Downloaded = true;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Download of patch {PatchUrl} failed", patchUrl);
             _downloadProgress.TryRemove(progressKey, out _);
             throw;
         }
@@ -312,11 +317,7 @@ public class PatchService
 
     // ---------------------------------------------------------------- download helpers
 
-    private static bool HasS3(GamePatch patch)
-        => patch.PatchData != null
-           && !string.IsNullOrEmpty(patch.PatchData.S3HostLink)
-           && !string.IsNullOrEmpty(patch.PatchData.S3FolderName)
-           && !string.IsNullOrEmpty(patch.PatchData.S3BucketName);
+    private static bool HasS3(GamePatch patch) => patch.PatchData.HasS3Storage();
 
     private async Task<(List<string> files, ulong size)> DownloadFromS3(GamePatch patch, string patchDir, string progressKey)
     {
@@ -381,8 +382,7 @@ public class PatchService
         _downloadProgress[progressKey] = progress;
 
         var link = patch.PatchData.SimpleDownloadLink.ParseDownloadLink();
-        using var client = new HttpClient();
-        client.Timeout = TimeSpan.FromHours(2);
+        var client = _httpClientFactory.CreateClient(DownloadClientName);
         using var response = await client.GetAsync(link, HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
 
@@ -406,9 +406,9 @@ public class PatchService
         if (!archivePath.ExtractFile())
             throw new ApiException(502, "Patch archive could not be extracted: " + Path.GetFileName(archivePath));
 
-        var allFiles = Extensions.GetAllFilesRecursively(patchDir);
+        var allFiles = FileSystemExtensions.GetAllFilesRecursively(patchDir);
         var installedFiles = allFiles.Select(f => Path.GetRelativePath(patchDir, f)).ToList();
-        var totalSize = (ulong)Extensions.GetTotalSizeInBytes(allFiles);
+        var totalSize = (ulong)FileSystemExtensions.GetTotalSizeInBytes(allFiles);
 
         progress.DownloadedFiles = installedFiles;
         progress.DownloadedSize = totalSize;

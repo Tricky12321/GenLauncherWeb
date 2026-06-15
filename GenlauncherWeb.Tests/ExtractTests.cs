@@ -107,7 +107,6 @@ public class ExtractTests
     }
 
     [Test]
-    [Platform(Include = "Win")]
     public void Extract7z_ExtractsFilesAndDeletesArchive()
     {
         var sourceDir = MakeSourceDir("7z_src", new()
@@ -129,7 +128,6 @@ public class ExtractTests
     }
 
     [Test]
-    [Platform(Include = "Win")]
     public void Extract7z_MultipleFiles_AllExtracted()
     {
         var sourceDir = MakeSourceDir("7z_multi", new()
@@ -150,6 +148,28 @@ public class ExtractTests
         File.ReadAllText(Path.Combine(destDir, "a.big")).Should().Be("file a");
         File.ReadAllText(Path.Combine(destDir, "b.big")).Should().Be("file b");
         File.ReadAllText(Path.Combine(destDir, "sub", "c.big")).Should().Be("file c");
+    }
+
+    // -------------------------------------------------------------- zip-slip guard
+
+    [Test]
+    public void ExtractZip_RejectsPathTraversalEntries()
+    {
+        var destDir = Path.Combine(_tempDir, "zipslip_out");
+        Directory.CreateDirectory(destDir);
+
+        var zipPath = Path.Combine(destDir, "evil.zip");
+        using (var zip = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            var entry = zip.CreateEntry("../escaped.txt");
+            using var writer = new StreamWriter(entry.Open());
+            writer.Write("pwned");
+        }
+
+        var act = () => zipPath.ExtractFile();
+
+        act.Should().Throw<IOException>("a '../' entry must not be allowed to escape the destination");
+        File.Exists(Path.Combine(_tempDir, "escaped.txt")).Should().BeFalse("nothing may be written outside the destination folder");
     }
 
     // -------------------------------------------------------------- extension routing
@@ -178,7 +198,7 @@ public class ExtractTests
             ["sub/deep/b.txt"] = "b"
         });
 
-        var files = Extensions.GetAllFilesRecursively(dir);
+        var files = FileSystemExtensions.GetAllFilesRecursively(dir);
 
         files.Should().HaveCount(3);
         files.Should().OnlyContain(f => File.Exists(f));
@@ -193,7 +213,7 @@ public class ExtractTests
             ["f200.dat"] = new string('y', 200)
         });
 
-        var total = Extensions.GetTotalSizeInBytes(
+        var total = FileSystemExtensions.GetTotalSizeInBytes(
         [
             Path.Combine(dir, "f100.dat"),
             Path.Combine(dir, "f200.dat")
@@ -208,7 +228,7 @@ public class ExtractTests
         var existing = Path.Combine(_tempDir, "exists.dat");
         File.WriteAllBytes(existing, new byte[64]);
 
-        var total = Extensions.GetTotalSizeInBytes(
+        var total = FileSystemExtensions.GetTotalSizeInBytes(
         [
             existing,
             Path.Combine(_tempDir, "does_not_exist.dat")

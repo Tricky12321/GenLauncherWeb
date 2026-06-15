@@ -117,7 +117,7 @@ public class SymLinkService
     {
         if (File.Exists(linkFile))
         {
-            if (Extensions.IsSymbolicLink(linkFile))
+            if (FileSystemExtensions.IsSymbolicLink(linkFile))
             {
                 File.Delete(linkFile);
             }

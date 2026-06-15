@@ -117,7 +117,7 @@ public class DownloadTests
 
         using var server = new LocalHttpServer(content, contentType: "text/plain");
 
-        var result = Extensions.DownloadYaml(server.Url);
+        var result = MetadataDownloader.DownloadYaml(server.Url);
 
         result.Should().Be(yaml);
     }
